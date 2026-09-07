@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlinJvm)
     alias(libs.plugins.ktor)
+    kotlin("plugin.serialization") version "2.3.20"
 }
 
 group = "at.yerova.socialixxx"
@@ -25,4 +26,9 @@ dependencies {
     //test
     testImplementation(libs.ktor.serverTestHost)
     testImplementation(libs.kotlin.testJunit)
+
+    implementation(libs.serialization.json)
+
+    implementation(libs.ktor.contentNegotiation)
+    implementation(libs.ktor.contentNegotiation.json)
 }

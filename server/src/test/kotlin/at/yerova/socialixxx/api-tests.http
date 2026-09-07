@@ -1,0 +1,137 @@
+### Szenario 1: User 1 (Leon) registrieren
+POST http://localhost:8080/api/register
+Content-Type: application/json
+
+{
+  "username": "leon",
+  "passwordHash": "geheim123",
+  "displayName": "Leon",
+  "department": "Büro"
+}
+
+### Szenario 2: User 2 (Jule) registrieren
+POST http://localhost:8080/api/register
+Content-Type: application/json
+
+{
+  "username": "jule",
+  "passwordHash": "passwort",
+  "displayName": "Jule",
+  "department": "Lager"
+}
+
+### Szenario 3: Alle User abrufen (Überprüfen, ob sie in der DB sind)
+# Erwartet: JSON-Array mit Leon (ID 1) und Jule (ID 2)
+GET http://localhost:8080/api/users
+Accept: application/json
+
+### Szenario 4: Neuen Chat zwischen Leon (1) und Jule (2) erstellen
+POST http://localhost:8080/api/chats/create
+Content-Type: application/json
+
+{
+  "myUserId": 1,
+  "partnerId": 2
+}
+
+### Szenario 5: Nachricht von Leon in diesen Chat (ID 1) senden
+POST http://localhost:8080/api/chat/1/messages
+Content-Type: application/json
+
+{
+  "senderId": 1,
+  "content": "Hey Jule, hast du den Zugangscode für den Boden?"
+}
+
+### Szenario 6: Nachricht von Jule antworten
+POST http://localhost:8080/api/chat/1/messages
+Content-Type: application/json
+
+{
+  "senderId": 2,
+  "content": "Ja klar, liegt im Büro auf dem Tisch!"
+}
+
+### Szenario 7: Chat-Verlauf laden (als Leon, ID 1)
+# HINWEIS: Hier ist jetzt das ?userId=1 angehängt für den Sicherheits-Check!
+GET http://localhost:8080/api/chat/1/messages?userId=1
+Accept: application/json
+
+### Szenario 8: Chat-Liste für Leon abrufen (Tab 2 aus deiner Skizze)
+# Erwartet: Zeigt den Chat mit Jule an, inkl. "unreadCount" und "lastMessage"
+GET http://localhost:8080/api/chats/1
+Accept: application/json
+
+### Szenario 9: Einen dritten User (Eva) registrieren
+POST http://localhost:8080/api/register
+Content-Type: application/json
+
+{
+  "username": "eva_test",
+  "passwordHash": "geheim",
+  "displayName": "Eva",
+  "department": "Verkauf"
+}
+
+### Szenario 10: Eva (ID 3) versucht, Leon und Jules Chat (ID 1) zu lesen
+# Erwartet: HTTP 403 Forbidden (Action Blocked: Not part of conversation.)
+GET http://localhost:8080/api/chat/1/messages?userId=3
+Accept: application/json
+
+### Szenario 11: Eva (ID 3) versucht, eine Nachricht in Leons & Jules Chat (ID 1) zu schreiben
+# Erwartet: HTTP 403 Forbidden (Action Blocked: Not part of conversation.)
+POST http://localhost:8080/api/chat/1/messages
+Content-Type: application/json
+
+{
+  "senderId": 3,
+  "content": "Hallo Leon, ich schreibe heimlich in deinen Chat mit Jule!"
+}
+
+### Szenario 12: Leon liest Jules Nachricht (Nachrichten als gelesen markieren)
+POST http://localhost:8080/api/chat/1/read
+Content-Type: application/json
+
+{
+  "readerId": 1
+}
+
+### Szenario 13: Jule archiviert den Chat (Status auf 3 setzen)
+PATCH http://localhost:8080/api/chat/1/status
+Content-Type: application/json
+
+{
+  "requesterId": 2,
+  "newStatus": 3
+}
+
+
+
+### Szenario 14: Ein neues Ereignis erstellen (z.B. von Leon, ID 1)
+POST http://localhost:8080/api/events
+Content-Type: application/json
+
+{
+  "title": "Team-Meeting Lager 2",
+  "description": "Lorem ipsum dolor sit amet. Besprechung der neuen Lieferungen.",
+  "eventTime": "2026-09-15T12:00:00",
+  "creatorId": 1
+}
+
+### Szenario 15: Alle Ereignisse abrufen (Ansicht für Jule, ID 2)
+# Erwartet: participantCount ist 1, isParticipating ist false
+GET http://localhost:8080/api/events?userId=2
+Accept: application/json
+
+### Szenario 16: Jule (ID 2) tritt dem Event (ID 1) bei
+POST http://localhost:8080/api/events/1/join
+Content-Type: application/json
+
+{
+  "userId": 2
+}
+
+### Szenario 17: Erneut alle Ereignisse abrufen
+# Erwartet: participantCount ist 2, isParticipating für Jule ist true (Das 👥 2 Icon im UI!)
+GET http://localhost:8080/api/events?userId=2
+Accept: application/json
