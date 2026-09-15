@@ -20,6 +20,7 @@ material3 = "1.11.0-alpha07"
 exposed = "1.5.0"
 h2database = "2.4.240"
 kotlinx-serialization = "1.9.0"
+navigationCompose = "2.9.2"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -58,6 +59,15 @@ serialization-json = {module = "org.jetbrains.kotlinx:kotlinx-serialization-json
 
 ktor-contentNegotiation = {module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor"}
 ktor-contentNegotiation-json ={module ="io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor"}
+ktor-server-corsjvm = {module = "io.ktor:ktor-server-cors-jvm", version.ref = "ktor"}
+
+## Ktor Client
+ktor-client-core = {module = "io.ktor:ktor-client-core", version.ref="ktor"}
+ktor-client-cio =  {module = "io.ktor:ktor-client-cio", version.ref="ktor"}
+ktor-client-contentNegotiation =  {module = "io.ktor:ktor-client-content-negotiation", version.ref="ktor"}
+
+## Client Gui
+compose-navigation = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

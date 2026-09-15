@@ -1,47 +1,79 @@
 package at.yerova.socialixxx
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import org.jetbrains.compose.resources.painterResource
-
-import socialixxx.app.shared.generated.resources.Res
-import socialixxx.app.shared.generated.resources.compose_multiplatform
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import at.yerova.socialixxx.api.ApiClient
+import at.yerova.socialixxx.ui.EventsScreen
+import at.yerova.socialixxx.ui.LoginScreen
+import at.yerova.socialixxx.ui.RegisterScreen
 
 @Composable
-@Preview
 fun App() {
     MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        val navController = rememberNavController()
+
+        val apiClient = remember { ApiClient() }
+
+        NavHost(
+            navController = navController,
+            startDestination = LoginScreen
         ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
+
+            composable<LoginScreen> {
+                LoginScreen(
+                    apiClient = apiClient,
+                    onNavigateToRegister = {
+                        navController.navigate(RegisterScreen)
+                    },
+                    onLoginSuccess = { userDto ->
+                        navController.navigate(
+                            EventsScreen(
+                                userId = userDto.id,
+                                displayName = userDto.displayName,
+                                department = userDto.department
+                            )
+                        ) {
+                            popUpTo(LoginScreen) { inclusive = true }
+                        }
+                    }
+                )
             }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
+
+            composable<RegisterScreen> {
+                RegisterScreen(
+                    apiClient = apiClient,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onRegisterSuccess = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable<EventsScreen> { backStackEntry ->
+                val route = backStackEntry.toRoute<EventsScreen>()
+
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
+                    Text(
+                        text = "Willkommen zurück, ${route.displayName}!",
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                    if (route.department != null) {
+                        Text(text = "Abteilung: ${route.department}")
+                    }
+                    Text(text = "(User ID: ${route.userId})")
                 }
             }
         }

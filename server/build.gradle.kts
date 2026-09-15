@@ -15,6 +15,7 @@ dependencies {
     implementation(libs.logback)
     implementation(libs.ktor.serverCore)
     implementation(libs.ktor.serverNetty)
+    implementation(libs.ktor.server.corsjvm)
 
     // database
     implementation(libs.exposed.core)
