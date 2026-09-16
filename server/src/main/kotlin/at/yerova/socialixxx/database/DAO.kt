@@ -16,6 +16,10 @@ class User(id: EntityID<Int>) : IntEntity(id) {
     var kz by UsersTable.kz
     var entryDate by UsersTable.entryDate
 
+    var birthday by UsersTable.birthday
+    var gender by UsersTable.gender
+    var pronouns by UsersTable.pronouns
+    var profilePictureUrl by UsersTable.profilePictureUrl
     val credentials by Credential referrersOn CredentialsTable.userId
 }
 

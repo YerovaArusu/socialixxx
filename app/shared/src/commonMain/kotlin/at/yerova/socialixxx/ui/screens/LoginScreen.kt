@@ -1,32 +1,47 @@
-package at.yerova.socialixxx.ui
+package at.yerova.socialixxx.ui.screens
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import at.yerova.socialixxx.api.ApiClient
+import at.yerova.socialixxx.api.LoginRequest
 import at.yerova.socialixxx.api.NetworkResult
-import at.yerova.socialixxx.api.RegisterRequest
+import at.yerova.socialixxx.api.UserDto
 import kotlinx.coroutines.launch
 
+
 @Composable
-fun RegisterScreen(
+fun LoginScreen(
     apiClient: ApiClient,
-    onNavigateBack: () -> Unit,
-    onRegisterSuccess: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    onLoginSuccess: (UserDto) -> Unit
 ) {
-    // Eingabefelder State
-    var displayName by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var department by remember { mutableStateOf("") }
 
-    // Asynchrone States
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -40,40 +55,20 @@ fun RegisterScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Account erstellen",
+            "Socialixxx Login",
             style = MaterialTheme.typography.headlineLarge,
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
         OutlinedTextField(
-            value = displayName,
-            onValueChange = { displayName = it },
-            label = { Text("Anzeigename (z.B. Leon)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = department,
-            onValueChange = { department = it },
-            label = { Text("Abteilung (Optional)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
             value = username,
             onValueChange = { username = it },
-            label = { Text("Benutzername (für Login)") },
+            label = { Text("Benutzername") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = password,
@@ -85,40 +80,30 @@ fun RegisterScreen(
             singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Fehleranzeige
         if (errorMessage != null) {
             Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
-            Spacer(modifier = Modifier.height(16.dp))
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             modifier = Modifier.fillMaxWidth(),
-            // Button ist nur aktiv, wenn die Pflichtfelder ausgefüllt sind und nicht gerade geladen wird
-            enabled = !isLoading && displayName.isNotBlank() && username.isNotBlank() && password.isNotBlank(),
+            enabled = !isLoading && username.isNotBlank() && password.isNotBlank(),
             onClick = {
                 coroutineScope.launch {
                     isLoading = true
                     errorMessage = null
 
-                    // Leere Abteilungs-Strings als "null" ans Backend schicken
-                    val dep = department.trim().takeIf { it.isNotEmpty() }
-                    
-                    val request = RegisterRequest(
-                        username = username.trim(),
-                        passwordHash = password, // Im PoC direktes Passwort, später Hash
-                        displayName = displayName.trim(),
-                        department = dep
-                    )
+                    val result = apiClient.login(LoginRequest(username, password))
 
-                    val result = apiClient.register(request)
                     isLoading = false
-
                     when (result) {
                         is NetworkResult.Success -> {
-                            onRegisterSuccess() // Navigiert zurück
+                            onLoginSuccess(result.data)
                         }
+
                         is NetworkResult.Error -> {
                             errorMessage = result.message
                         }
@@ -129,14 +114,14 @@ fun RegisterScreen(
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
             } else {
-                Text("Registrieren")
+                Text("Anmelden")
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TextButton(onClick = onNavigateBack, enabled = !isLoading) {
-            Text("Zurück zum Login")
+        TextButton(onClick = onNavigateToRegister, enabled = !isLoading) {
+            Text("Noch keinen Account? Registrieren")
         }
     }
 }

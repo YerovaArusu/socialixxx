@@ -16,6 +16,11 @@ object UsersTable : IntIdTable("users") {
     val dw = varchar("dw", 50).nullable()
     val kz = varchar("kz", 50).nullable()
     val entryDate = datetime("entry_date").default(LocalDateTime.now())
+
+    val birthday = varchar("birthday", 10).nullable() // Format YYYY-MM-DD
+    val gender = varchar("gender", 50).nullable()
+    val pronouns = varchar("pronouns", 50).nullable()
+    val profilePictureUrl = varchar("profile_picture_url", 500).nullable()
 }
 
 object CredentialsTable : IntIdTable("credentials") {

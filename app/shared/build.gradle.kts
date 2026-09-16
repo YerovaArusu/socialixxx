@@ -59,6 +59,8 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
 
             implementation(libs.compose.navigation)
+            implementation(libs.compose.coil)
+            implementation(libs.compose.coilokhttp)
 
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.cio)

@@ -24,7 +24,7 @@ fun Application.configureApi() {
                     val cred = Credential.find { CredentialsTable.username eq req.username }.firstOrNull()
                     if (cred != null && cred.passwordHash == req.passwordHash) {
                         val user = cred.user
-                        UserDto(user.id.value, user.displayName, user.department)
+                        UserDto(user.id.value, user.displayName, user.department,user.birthday,user.gender,user.pronouns,user.profilePictureUrl)
                     } else null
                 }
 
@@ -41,6 +41,7 @@ fun Application.configureApi() {
                     val newUser = User.new {
                         this.displayName = req.displayName
                         this.department = req.department
+                        this.profilePictureUrl = "https://ui-avatars.com/api/?name=${req.displayName}&background=0D8ABC&color=fff&size=128"
                     }
                     Credential.new {
                         this.username = req.username

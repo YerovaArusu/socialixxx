@@ -15,7 +15,15 @@ data class RegisterRequest(
 )
 
 @Serializable
-data class UserDto(val id: Int, val displayName: String, val department: String?)
+data class UserDto(
+    val id: Int,
+    val displayName: String,
+    val department: String?,
+    val birthday: String? = null,
+    val gender: String? = null,
+    val pronouns: String? = null,
+    val profilePictureUrl: String? = null
+)
 
 @Serializable
 data class ChatDto(
