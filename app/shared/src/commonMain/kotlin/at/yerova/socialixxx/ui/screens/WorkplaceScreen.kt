@@ -13,11 +13,11 @@ import androidx.compose.ui.graphics.Color
 
 @Composable
 fun WorkplaceScreen(
-    userId: Int, displayName: String, department: String?, profilePictureUrl: String?,
     onNavigateToEvents: () -> Unit, onNavigateToChats: () -> Unit, onNavigateToTeam: () -> Unit
 ) {
+
     Scaffold(
-        topBar = { NavigationTopBar("Workplace", profilePictureUrl, {}, {}) },
+        topBar = { NavigationTopBar("Workplace", {}, {}) },
         bottomBar = { NavigationBar(3, onNavigateToEvents, onNavigateToChats, onNavigateToTeam, {}) },
         containerColor = Color(0xFFF5F3F7)
     ) { padding ->

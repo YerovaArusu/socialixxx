@@ -3,26 +3,10 @@ package at.yerova.socialixxx.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,42 +17,49 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import at.yerova.socialixxx.LocalUser
 import at.yerova.socialixxx.ui.getMaterialSymbolsFont
 import coil3.compose.AsyncImage
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+@SerialName("login")
 object LoginScreen
 
 @Serializable
+@SerialName("register")
 object RegisterScreen
 
 @Serializable
-data class ChatsScreen(
-    val userId: Int,
-    val displayName: String,
-    val department: String?,
-    val profilePictureUrl: String?
+@SerialName("chats")
+object ChatsScreen
+
+@Serializable
+@SerialName("chat")
+data class ChatDetailRoute(
+    val chatId: Int
 )
 
 @Serializable
-data class TeamScreen(val userId: Int, val displayName: String, val department: String?, val profilePictureUrl: String?)
+@SerialName("user")
+data class UserProfileRoute(val targetUserId: Int)
 
 @Serializable
-data class WorkplaceScreen(
-    val userId: Int,
-    val displayName: String,
-    val department: String?,
-    val profilePictureUrl: String?
-)
+@SerialName("teams")
+object TeamScreen
 
 @Serializable
-data class EventsScreen(
-    val userId: Int,
-    val displayName: String,
-    val department: String?,
-    val profilePictureUrl: String? = null
-)
+@SerialName("workplace")
+object WorkplaceScreen
+
+@Serializable
+@SerialName("events")
+object EventsScreen
+
+@Serializable
+@SerialName("event_details")
+data class EventDetailRoute(val eventId: Int)
 
 @Composable
 fun NavigationBar(
@@ -137,11 +128,11 @@ fun RowScope.TabItem(
 @Composable
 fun NavigationTopBar(
     title: String,
-    profilePictureUrl: String?,
     onAddClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
     val iconFont = getMaterialSymbolsFont()
+    val currentUser = LocalUser.current ?: return
 
     Surface(
         color = Color.White,
@@ -175,9 +166,9 @@ fun NavigationTopBar(
                 onClick = onProfileClick,
                 modifier = Modifier.size(40.dp)
             ) {
-                if (profilePictureUrl != null) {
+                if (currentUser.profilePictureUrl != null) {
                     AsyncImage(
-                        model = profilePictureUrl,
+                        model = currentUser.profilePictureUrl,
                         contentDescription = "Profilbild",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier

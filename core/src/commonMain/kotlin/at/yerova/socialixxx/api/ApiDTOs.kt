@@ -40,6 +40,7 @@ data class MessageDto(val id: Int, val senderId: Int, val content: String, val t
 
 @Serializable
 data class SendMessageRequest(val senderId: Int, val content: String)
+
 @Serializable
 data class CreateChatRequest(val myUserId: Int, val partnerId: Int)
 

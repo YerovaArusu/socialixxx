@@ -9,14 +9,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import at.yerova.socialixxx.api.ApiClient
+import at.yerova.socialixxx.LocalApiClient
 import at.yerova.socialixxx.api.NetworkResult
 import at.yerova.socialixxx.api.RegisterRequest
 import kotlinx.coroutines.launch
 
 @Composable
 fun RegisterScreen(
-    apiClient: ApiClient,
     onNavigateBack: () -> Unit,
     onRegisterSuccess: () -> Unit
 ) {
@@ -24,6 +23,8 @@ fun RegisterScreen(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var department by remember { mutableStateOf("") }
+
+    val apiClient = LocalApiClient.current
 
     // Asynchrone States
     var isLoading by remember { mutableStateOf(false) }
@@ -100,7 +101,7 @@ fun RegisterScreen(
                     errorMessage = null
 
                     val dep = department.trim().takeIf { it.isNotEmpty() }
-                    
+
                     val request = RegisterRequest(
                         username = username.trim(),
                         passwordHash = password, // Im PoC direktes Passwort, später Hash
@@ -115,6 +116,7 @@ fun RegisterScreen(
                         is NetworkResult.Success -> {
                             onRegisterSuccess()
                         }
+
                         is NetworkResult.Error -> {
                             errorMessage = result.message
                         }

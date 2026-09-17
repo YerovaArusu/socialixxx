@@ -10,15 +10,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import at.yerova.socialixxx.LocalApiClient
+import at.yerova.socialixxx.LocalUser
 
 
 @Composable
 fun TeamScreen(
-    userId: Int, displayName: String, department: String?, profilePictureUrl: String?,
     onNavigateToEvents: () -> Unit, onNavigateToChats: () -> Unit, onNavigateToWorkplace: () -> Unit
 ) {
+
+    val apiClient = LocalApiClient.current
+    val currentUser = LocalUser.current ?: return
+
     Scaffold(
-        topBar = { NavigationTopBar("Team", profilePictureUrl, {}, {}) },
+        topBar = { NavigationTopBar("Team", {}, {}) },
         bottomBar = { NavigationBar(2, onNavigateToEvents, onNavigateToChats, {}, onNavigateToWorkplace) },
         containerColor = Color(0xFFF5F3F7)
     ) { padding ->

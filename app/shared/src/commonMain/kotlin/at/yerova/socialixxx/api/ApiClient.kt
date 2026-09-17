@@ -3,12 +3,12 @@ package at.yerova.socialixxx.api
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.*
 import io.ktor.http.*
 
 class ApiClient(
     private val client: HttpClient = socialixxxHttpClient,
-    private val baseUrl: String = "http://127.0.0.1:8081/api" // 10.0.2.2 ist localhost für den Android Emulator. Für Web: http://localhost:8080/api
+    val baseUrl: String = "http://192.168.178.41:8081/api" //"http://127.0.0.1:8081/api" // 10.0.2.2 ist localhost für den Android Emulator. Für Web: http://localhost:8080/api
 ) {
     private suspend inline fun <reified T> apiCall(
         apiCall: () -> HttpResponse
@@ -43,8 +43,18 @@ class ApiClient(
         client.get("$baseUrl/users")
     }
 
+    suspend fun getUser(userId: Int): NetworkResult<UserDto> = apiCall {
+        client.get("$baseUrl/users/$userId")
+    }
+
     suspend fun getChats(userId: Int): NetworkResult<List<ChatDto>> = apiCall {
         client.get("$baseUrl/chats/$userId")
+    }
+
+    suspend fun getChat(chatId: Int, userId: Int): NetworkResult<ChatDto> = apiCall {
+        client.get("$baseUrl/chat/$chatId") {
+            parameter("userId", userId)
+        }
     }
 
     suspend fun createChat(request: CreateChatRequest): NetworkResult<ChatDto> = apiCall {
@@ -83,6 +93,12 @@ class ApiClient(
 
     suspend fun getEvents(userId: Int): NetworkResult<List<EventDto>> = apiCall {
         client.get("$baseUrl/events") {
+            parameter("userId", userId)
+        }
+    }
+
+    suspend fun getEvent(eventId: Int, userId: Int): NetworkResult<EventDto> = apiCall {
+        client.get("$baseUrl/events/$eventId") {
             parameter("userId", userId)
         }
     }

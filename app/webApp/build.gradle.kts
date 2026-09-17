@@ -26,6 +26,7 @@ kotlin {
             implementation(libs.compose.ui)
 
             implementation(libs.serialization.json)
+            implementation(libs.compose.navigation)
         }
     }
 }

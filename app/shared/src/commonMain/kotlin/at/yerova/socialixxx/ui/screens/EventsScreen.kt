@@ -2,6 +2,7 @@ package at.yerova.socialixxx.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,18 +15,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import at.yerova.socialixxx.LocalApiClient
+import at.yerova.socialixxx.LocalUser
 import at.yerova.socialixxx.api.ApiClient
+import at.yerova.socialixxx.api.CreateEventRequest
 import at.yerova.socialixxx.api.EventDto
 import at.yerova.socialixxx.api.NetworkResult
 import at.yerova.socialixxx.ui.getMaterialSymbolsFont
+import kotlinx.coroutines.launch
 
 @Composable
 fun EventsScreen(
-    userId: Int,
-    displayName: String,
-    department: String?,
-    profilePictureUrl: String?,
-    apiClient: ApiClient,
+    onNavigateToEventDetail: (Int) -> Unit,
     onNavigateToEvents: () -> Unit,
     onNavigateToChats: () -> Unit,
     onNavigateToTeam: () -> Unit,
@@ -35,11 +36,16 @@ fun EventsScreen(
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val coroutineScope = rememberCoroutineScope()
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var refreshTrigger by remember { mutableStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    val apiClient = LocalApiClient.current
+    val currentUser = LocalUser.current ?: return
+
+
+    LaunchedEffect(refreshTrigger) {
         isLoading = true
-        val result = apiClient.getEvents(userId)
+        val result = apiClient.getEvents(currentUser.id)
         isLoading = false
         when (result) {
             is NetworkResult.Success -> events = result.data
@@ -47,22 +53,29 @@ fun EventsScreen(
         }
     }
 
+    if (showCreateDialog) {
+        CreateEventDialog(
+            userId = currentUser.id,
+            apiClient = apiClient,
+            onDismiss = { showCreateDialog = false },
+            onSuccess = {
+                showCreateDialog = false
+                refreshTrigger++
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             NavigationTopBar(
                 title = "Ereignisse",
-                profilePictureUrl = profilePictureUrl,
-                onAddClick = {
-                    println("Neues Event erstellen geklickt!")
-                },
-                onProfileClick = {
-                    println("Profil geklickt!")
-                }
+                onAddClick = { showCreateDialog = true },
+                onProfileClick = { println("Profil geklickt!") }
             )
         },
         bottomBar = {
             NavigationBar(
-                currentTab = 0, // 0 = Events/Kalender
+                currentTab = 0,
                 onNavigateToEvents = onNavigateToEvents,
                 onNavigateToChats = onNavigateToChats,
                 onNavigateToTeam = onNavigateToTeam,
@@ -71,12 +84,8 @@ fun EventsScreen(
         },
         containerColor = Color(0xFFF5F3F7)
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            if (isLoading) {
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (isLoading && events.isEmpty()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (errorMessage != null) {
                 Text(
@@ -91,7 +100,10 @@ fun EventsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(events) { event ->
-                        EventCard(event = event)
+                        EventCard(
+                            event = event,
+                            onClick = { onNavigateToEventDetail(event.id) }
+                        )
                     }
                 }
             }
@@ -100,52 +112,33 @@ fun EventsScreen(
 }
 
 @Composable
-fun EventCard(event: EventDto) {
+fun EventCard(event: EventDto, onClick: () -> Unit) {
     val iconFont = getMaterialSymbolsFont()
     val timeString = event.eventTime.substringAfter("T").take(5)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp)),
+            .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
+            .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.width(60.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
+        // ... (Dein exakter Row-Code von vorhin bleibt hier zu 100% gleich!)
+        Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Column(modifier = Modifier.width(60.dp), horizontalAlignment = Alignment.Start) {
                 Text(text = "Time", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(text = timeString, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
-
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(80.dp)
-                    .background(Color.Black)
-            )
-
+            Box(modifier = Modifier.width(1.dp).height(80.dp).background(Color.Black))
             Spacer(modifier = Modifier.width(16.dp))
-
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = event.title.uppercase(), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = event.description ?: "Keine Beschreibung.",
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp
-                )
-
+                Text(text = event.description ?: "Keine Beschreibung.", fontSize = 12.sp, lineHeight = 16.sp)
                 Spacer(modifier = Modifier.height(16.dp))
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -153,11 +146,7 @@ fun EventCard(event: EventDto) {
                 ) {
                     Text(text = "Participants", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "group",
-                            fontFamily = iconFont,
-                            fontSize = 16.sp
-                        )
+                        Text(text = "group", fontFamily = iconFont, fontSize = 16.sp)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(text = event.participantCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
@@ -165,4 +154,84 @@ fun EventCard(event: EventDto) {
             }
         }
     }
+}
+
+@Composable
+fun CreateEventDialog(
+    userId: Int,
+    apiClient: ApiClient,
+    onDismiss: () -> Unit,
+    onSuccess: () -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var date by remember { mutableStateOf("2026-09-17") } // Platzhalter für Morgen
+    var time by remember { mutableStateOf("14:00") }
+
+    var isSubmitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Neues Event erstellen") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Titel") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Beschreibung (Optional)") })
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = date,
+                        onValueChange = { date = it },
+                        label = { Text("Datum (YYYY-MM-DD)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = time,
+                        onValueChange = { time = it },
+                        label = { Text("Zeit (HH:MM)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
+                if (error != null) Text(text = error!!, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = !isSubmitting && title.isNotBlank() && date.isNotBlank() && time.isNotBlank(),
+                onClick = {
+                    scope.launch {
+                        isSubmitting = true
+                        error = null
+                        // Baut den ISO-String zusammen: "2026-09-17T14:00:00"
+                        val isoTime = "${date.trim()}T${time.trim()}:00"
+                        val req = CreateEventRequest(title, description.takeIf { it.isNotBlank() }, isoTime, userId)
+
+                        when (val res = apiClient.createEvent(req)) {
+                            is NetworkResult.Success -> onSuccess()
+                            is NetworkResult.Error -> {
+                                error = res.message; isSubmitting = false
+                            }
+                        }
+                    }
+                }
+            ) {
+                if (isSubmitting) CircularProgressIndicator(modifier = Modifier.size(16.dp)) else Text("Erstellen")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Abbrechen") }
+        }
+    )
 }

@@ -24,7 +24,15 @@ fun Application.configureApi() {
                     val cred = Credential.find { CredentialsTable.username eq req.username }.firstOrNull()
                     if (cred != null && cred.passwordHash == req.passwordHash) {
                         val user = cred.user
-                        UserDto(user.id.value, user.displayName, user.department,user.birthday,user.gender,user.pronouns,user.profilePictureUrl)
+                        UserDto(
+                            user.id.value,
+                            user.displayName,
+                            user.department,
+                            user.birthday,
+                            user.gender,
+                            user.pronouns,
+                            user.profilePictureUrl
+                        )
                     } else null
                 }
 
@@ -41,7 +49,8 @@ fun Application.configureApi() {
                     val newUser = User.new {
                         this.displayName = req.displayName
                         this.department = req.department
-                        this.profilePictureUrl = "https://ui-avatars.com/api/?name=${req.displayName}&background=0D8ABC&color=fff&size=128"
+                        this.profilePictureUrl =
+                            "https://ui-avatars.com/api/?name=${req.displayName}&background=0D8ABC&color=fff&size=128"
                     }
                     Credential.new {
                         this.username = req.username
@@ -57,9 +66,37 @@ fun Application.configureApi() {
 
             get("/users") {
                 val users = transaction {
-                    User.all().map { UserDto(it.id.value, it.displayName, it.department) }
+                    User.all().map {
+                        UserDto(
+                            it.id.value,
+                            it.displayName,
+                            it.department,
+                            it.birthday,
+                            it.gender,
+                            it.pronouns,
+                            it.profilePictureUrl
+                        )
+                    }
                 }
                 call.respond(HttpStatusCode.OK, users)
+            }
+            get("/users/{id}") {
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val user = transaction {
+                    User.findById(id)?.let {
+                        UserDto(
+                            it.id.value,
+                            it.displayName,
+                            it.department,
+                            it.birthday,
+                            it.gender,
+                            it.pronouns,
+                            it.profilePictureUrl
+                        )
+                    }
+                }
+                if (user != null) call.respond(HttpStatusCode.OK, user)
+                else call.respond(HttpStatusCode.NotFound, "User not found")
             }
 
 
@@ -138,6 +175,27 @@ fun Application.configureApi() {
                     }
                     call.respond(HttpStatusCode.OK, events)
                 }
+                get("/{id}") {
+                    val eventId =
+                        call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    val requesterId = call.request.queryParameters["userId"]?.toIntOrNull()
+
+                    val eventDto = transaction {
+                        Event.findById(eventId)?.let { event ->
+                            EventDto(
+                                id = event.id.value,
+                                title = event.title,
+                                description = event.description,
+                                eventTime = event.eventTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                                participantCount = event.participants.count().toInt(),
+                                isParticipating = requesterId != null && event.participants.any { it.id.value == requesterId }
+                            )
+                        }
+                    }
+
+                    if (eventDto != null) call.respond(HttpStatusCode.OK, eventDto)
+                    else call.respond(HttpStatusCode.NotFound, "Event not found")
+                }
 
                 post {
                     val req = call.receive<CreateEventRequest>()
@@ -188,6 +246,30 @@ fun Application.configureApi() {
             }
 
             route("/chat/{chatId}") {
+
+                get {
+                    val chatId =
+                        call.parameters["chatId"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    val requesterId = call.request.queryParameters["userId"]?.toIntOrNull() ?: return@get call.respond(
+                        HttpStatusCode.BadRequest,
+                        "Missing userId"
+                    )
+
+                    val chatDto = transaction {
+                        DirectChat.findById(chatId)?.let { chat ->
+                            if (chat.user1.id.value != requesterId && chat.user2.id.value != requesterId) return@let null
+
+                            val partner = if (chat.user1.id.value == requesterId) chat.user2 else chat.user1
+                            val unread = chat.messages.count { it.sender.id.value != requesterId && !it.isRead }
+                            val lastMsg = chat.messages.maxByOrNull { it.timestamp }?.content
+
+                            ChatDto(chat.id.value, partner.id.value, partner.displayName, chat.status, unread, lastMsg)
+                        }
+                    }
+
+                    if (chatDto != null) call.respond(HttpStatusCode.OK, chatDto)
+                    else call.respond(HttpStatusCode.NotFound, "Chat not found or access denied")
+                }
 
                 post("/read") {
                     val chatId =

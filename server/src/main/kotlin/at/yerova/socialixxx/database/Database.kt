@@ -15,6 +15,13 @@ fun Application.configureDatabase() {
     )
 
     transaction {
-        SchemaUtils.create(UsersTable, CredentialsTable, DirectChatsTable, MessagesTable, EventsTable,EventParticipantsTable)
+        SchemaUtils.create(
+            UsersTable,
+            CredentialsTable,
+            DirectChatsTable,
+            MessagesTable,
+            EventsTable,
+            EventParticipantsTable
+        )
     }
 }
