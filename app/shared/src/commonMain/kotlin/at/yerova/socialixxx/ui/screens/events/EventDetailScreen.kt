@@ -1,6 +1,5 @@
 package at.yerova.socialixxx.ui.screens.events
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,45 +11,40 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import at.yerova.socialixxx.LocalApiClient
+import at.yerova.socialixxx.LocalNavController
+import at.yerova.socialixxx.LocalSymbolFont
 import at.yerova.socialixxx.LocalUser
-import at.yerova.socialixxx.api.CreateEventCommentRequest
-import at.yerova.socialixxx.api.EventActionRequest
-import at.yerova.socialixxx.api.EventCommentDto
-import at.yerova.socialixxx.api.EventDto
-import at.yerova.socialixxx.api.NetworkResult
-import at.yerova.socialixxx.ui.getMaterialSymbolsFont
-import coil3.compose.AsyncImage
+import at.yerova.socialixxx.api.*
+import at.yerova.socialixxx.ui.ProfileAvatar
 import kotlinx.coroutines.launch
-@OptIn(ExperimentalFoundationApi::class)
+
 @Composable
 fun EventDetailScreen(
     eventId: Int,
-    onNavigateBack: () -> Unit
 ) {
     var event by remember { mutableStateOf<EventDto?>(null) }
-    var comments by remember { mutableStateOf<List<EventCommentDto>>(emptyList()) } // NEU
-    var newCommentText by remember { mutableStateOf("") } // NEU
+    var comments by remember { mutableStateOf<List<EventCommentDto>>(emptyList()) }
+    var newCommentText by remember { mutableStateOf("") }
 
     var isLoading by remember { mutableStateOf(true) }
     var isJoining by remember { mutableStateOf(false) }
-    var isPostingComment by remember { mutableStateOf(false) } // NEU
+    var isPostingComment by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
 
-    val iconFont = getMaterialSymbolsFont()
+    val iconFont = LocalSymbolFont.current
     val scope = rememberCoroutineScope()
     val apiClient = LocalApiClient.current
     val currentUser = LocalUser.current ?: return
+    val navController = LocalNavController.current
 
     LaunchedEffect(refreshTrigger) {
         val eventResult = apiClient.getEvent(eventId, currentUser.id)
-        val commentsResult = apiClient.getEventComments(eventId) // Kommentare parallel laden
+        val commentsResult = apiClient.getEventComments(eventId)
 
         isLoading = false
         if (eventResult is NetworkResult.Success) {
@@ -62,11 +56,11 @@ fun EventDetailScreen(
     }
 
     Scaffold(
-        topBar = { /* Deine bisherige TopAppBar bleibt identisch */
+        topBar = {
             TopAppBar(
                 title = { Text("Event Details") },
                 navigationIcon = {
-                    Box(modifier = Modifier.clickable { onNavigateBack() }.padding(8.dp)) {
+                    Box(modifier = Modifier.clickable { navController.popBackStack() }.padding(8.dp)) {
                         Text(text = "arrow_back", fontFamily = iconFont, fontSize = 36.sp, color = Color.Black)
                     }
                 }
@@ -81,7 +75,6 @@ fun EventDetailScreen(
                 Text("Event nicht gefunden.", modifier = Modifier.align(Alignment.Center))
             } else {
                 val e = event!!
-                // Wir nutzen jetzt verticalScroll, damit die Kommentare Platz haben!
                 Column(
                     modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.Start
@@ -94,7 +87,6 @@ fun EventDetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // -- BEITRETEN BUTTON --
                     Button(
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         enabled = !e.isParticipating && !isJoining,
@@ -117,11 +109,13 @@ fun EventDetailScreen(
                     Divider()
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // -- KOMMENTAR SEKTION --
-                    Text("Kommentare (${comments.size})", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Kommentare (${comments.size})",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Kommentar-Eingabe
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(
                             value = newCommentText,
@@ -147,36 +141,47 @@ fun EventDetailScreen(
                             enabled = newCommentText.isNotBlank() && !isPostingComment,
                             modifier = Modifier.background(MaterialTheme.colorScheme.primary, CircleShape)
                         ) {
-                            if (isPostingComment) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                            if (isPostingComment) CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White
+                            )
                             else Text(text = "send", fontFamily = iconFont, fontSize = 20.sp, color = Color.White)
                         }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Kommentar-Liste
                     if (comments.isEmpty()) {
-                        Text("Noch keine Kommentare. Sei der Erste!", color = Color.Gray, modifier = Modifier.padding(bottom = 32.dp))
+                        Text(
+                            "Noch keine Kommentare. Sei der Erste!",
+                            color = Color.Gray,
+                            modifier = Modifier.padding(bottom = 32.dp)
+                        )
                     } else {
                         comments.forEach { comment ->
                             Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-                                // Profilbild
-                                val avatarMod = Modifier.size(40.dp).clip(CircleShape).background(Color.LightGray)
-                                if (comment.userProfilePic != null) {
-                                    AsyncImage(model = comment.userProfilePic, contentDescription = null, contentScale = ContentScale.Crop, modifier = avatarMod)
-                                } else {
-                                    Box(modifier = avatarMod, contentAlignment = Alignment.Center) { Text("person", fontFamily = iconFont, color = Color.Gray) }
-                                }
+
+                                ProfileAvatar(
+                                    imageUrl = comment.userProfilePic,
+                                    size = 40.dp
+                                )
 
                                 Spacer(modifier = Modifier.width(12.dp))
 
-                                // Text-Bubble
                                 Column(
-                                    modifier = Modifier.background(Color.White, RoundedCornerShape(12.dp)).padding(12.dp).fillMaxWidth()
+                                    modifier = Modifier.background(Color.White, RoundedCornerShape(12.dp))
+                                        .padding(12.dp).fillMaxWidth()
                                 ) {
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
                                         Text(text = comment.userName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                        Text(text = comment.timestamp.substringAfter("T").take(5), fontSize = 12.sp, color = Color.Gray)
+                                        Text(
+                                            text = comment.timestamp.substringAfter("T").take(5),
+                                            fontSize = 12.sp,
+                                            color = Color.Gray
+                                        )
                                     }
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(text = comment.content, fontSize = 14.sp)

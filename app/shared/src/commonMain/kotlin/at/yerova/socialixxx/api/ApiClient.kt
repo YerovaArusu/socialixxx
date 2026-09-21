@@ -5,11 +5,26 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 class ApiClient(
     private val client: HttpClient = socialixxxHttpClient,
-    val baseUrl: String = "http://192.168.178.41:8081/api" //"http://127.0.0.1:8081/api" // 10.0.2.2 ist localhost für den Android Emulator. Für Web: http://localhost:8080/api
+    val baseUrl: String = "http://10.0.0.10:8081/api" //"http://127.0.0.1:8081/api" // 10.0.2.2 ist localhost für den Android Emulator. Für Web: http://localhost:8080/api
 ) {
+
+    suspend fun pingServer(): Boolean {
+        return try {
+            val response = client.get("$baseUrl/ping")
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            if (e is CancellationException) {
+                currentCoroutineContext().ensureActive()
+            }
+            false
+        }
+    }
     private suspend inline fun <reified T> apiCall(
         apiCall: () -> HttpResponse
     ): NetworkResult<T> {
@@ -21,6 +36,9 @@ class ApiClient(
                 NetworkResult.Error("API-Error: ${response.status.description}", response.status.value)
             }
         } catch (e: Exception) {
+            if (e is CancellationException) {
+                currentCoroutineContext().ensureActive()
+            }
             NetworkResult.Error("NetworkError: ${e.message}")
         }
     }

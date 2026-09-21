@@ -13,25 +13,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import at.yerova.socialixxx.LocalApiClient
+import at.yerova.socialixxx.LocalNavController
+import at.yerova.socialixxx.LocalSymbolFont
 import at.yerova.socialixxx.LocalUser
 import at.yerova.socialixxx.api.*
-import at.yerova.socialixxx.ui.getMaterialSymbolsFont
-import coil3.compose.AsyncImage
+import at.yerova.socialixxx.ui.ProfileAvatar
+import at.yerova.socialixxx.ui.screens.UserProfileScreenRoute
 import kotlinx.coroutines.launch
 
 @Composable
 fun ChatDetailScreen(
     chatId: Int,
-    onNavigateBack: () -> Unit,
-    onNavigateToUserProfile: (Int) -> Unit
 ) {
     var chat by remember { mutableStateOf<ChatDto?>(null) }
     var messages by remember { mutableStateOf<List<MessageDto>>(emptyList()) }
@@ -39,16 +36,17 @@ fun ChatDetailScreen(
 
     var partnerPicUrl by remember { mutableStateOf<String?>(null) }
     var partnerName by remember { mutableStateOf<String?>(null) }
-    var hasStory by remember { mutableStateOf(false) } // NEU: Story-Flag für den Partner
+    var hasStory by remember { mutableStateOf(false) }
 
     var isLoading by remember { mutableStateOf(true) }
     var isSending by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
 
-    val iconFont = getMaterialSymbolsFont()
+    val iconFont = LocalSymbolFont.current
     val scope = rememberCoroutineScope()
     val apiClient = LocalApiClient.current
     val currentUser = LocalUser.current ?: return
+    val navController = LocalNavController.current
 
     LaunchedEffect(chatId, currentUser) {
         val result = apiClient.getChat(chatId, currentUser.id)
@@ -60,7 +58,7 @@ fun ChatDetailScreen(
             if (userResult is NetworkResult.Success) {
                 partnerPicUrl = userResult.data.profilePictureUrl
                 partnerName = userResult.data.displayName
-                hasStory = userResult.data.hasActiveStory // NEU: Wir lesen den Status aus!
+                hasStory = userResult.data.hasActiveStory
             }
         }
     }
@@ -81,6 +79,7 @@ fun ChatDetailScreen(
             listState.animateScrollToItem(messages.size - 1)
         }
     }
+
     Scaffold(
         topBar = {
             Surface(shadowElevation = 4.dp, color = Color.White) {
@@ -88,43 +87,25 @@ fun ChatDetailScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {navController.popBackStack()}) {
                         Text(text = "arrow_back", fontFamily = iconFont, fontSize = 28.sp, color = Color.Black)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    val storyBrush = Brush.sweepGradient(
-                        colors = listOf(Color(0xFFfeda75), Color(0xFFfa7e1e), Color(0xFFd62976), Color(0xFF962fbf), Color(0xFF4f5bd5))
+                    ProfileAvatar(
+                        imageUrl = partnerPicUrl,
+                        hasStory = hasStory,
+                        size = 44.dp,
+                        onClick = { chat?.partnerId?.let { navController.navigate(UserProfileScreenRoute(it)) } }
                     )
 
-                    val avatarModifier = Modifier
-                        .size(44.dp) // Etwas größer für den Rahmen
-                        .let {
-                            if (hasStory) it.border(2.5.dp, storyBrush, CircleShape).padding(3.dp) else it
-                        }
-                        .clip(CircleShape)
-                        .clickable { chat?.partnerId?.let { onNavigateToUserProfile(it) } } // Klickbar!
-
-                    if (partnerPicUrl != null) {
-                        AsyncImage(
-                            model = partnerPicUrl,
-                            contentDescription = "Profil",
-                            contentScale = ContentScale.Crop,
-                            modifier = avatarModifier.background(Color.LightGray)
-                        )
-                    } else {
-                        Box(modifier = avatarModifier.background(Color.LightGray), contentAlignment = Alignment.Center) {
-                            Text(text = "person", fontFamily = iconFont, fontSize = 32.sp, color = Color.Gray)
-                        }
-                    }
-
                     Spacer(modifier = Modifier.width(12.dp))
-                    partnerName?.let {
+                    partnerName?.let { id ->
                         Text(
-                            text = it,
+                            text = id,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable { chat?.partnerId?.let { id -> onNavigateToUserProfile(id) } }
+                            modifier = Modifier.clickable { chat?.partnerId?.let { navController.navigate(UserProfileScreenRoute(it)) } }
                         )
                     }
                 }
@@ -205,7 +186,6 @@ fun ChatDetailScreen(
             }
         }
     }
-
 }
 
 @Composable

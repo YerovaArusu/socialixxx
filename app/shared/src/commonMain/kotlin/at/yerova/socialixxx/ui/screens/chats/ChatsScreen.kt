@@ -1,45 +1,36 @@
 package at.yerova.socialixxx.ui.screens.chats
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import at.yerova.socialixxx.LocalApiClient
+import at.yerova.socialixxx.LocalNavController
+import at.yerova.socialixxx.LocalSymbolFont
 import at.yerova.socialixxx.LocalUser
 import at.yerova.socialixxx.api.*
-import at.yerova.socialixxx.ui.getMaterialSymbolsFont
-import at.yerova.socialixxx.ui.screens.NavigationBar
-import at.yerova.socialixxx.ui.screens.NavigationTopBar
-import coil3.compose.AsyncImage
+import at.yerova.socialixxx.ui.NavigationBar
+import at.yerova.socialixxx.ui.NavigationTopBar
+import at.yerova.socialixxx.ui.ProfileAvatar
+import at.yerova.socialixxx.ui.screens.ChatDetailScreenRoute
+import at.yerova.socialixxx.ui.screens.UserProfileScreenRoute
+import at.yerova.socialixxx.ui.screens.generic.UserProfileScreen
 import kotlinx.coroutines.launch
 
 @Composable
-fun ChatsScreen(
-    onNavigateToChatDetail: (Int, String, Int) -> Unit,
-    onNavigateToUserProfile: (Int) -> Unit,
-    onNavigateToEvents: () -> Unit,
-    onNavigateToTeam: () -> Unit,
-    onNavigateToWorkplace: () -> Unit
-) {
+fun ChatsScreen() {
     var chats by remember { mutableStateOf<List<ChatDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var showNewChatDialog by remember { mutableStateOf(false) }
-
 
     val apiClient = LocalApiClient.current
     val currentUser = LocalUser.current ?: return
@@ -73,12 +64,11 @@ fun ChatsScreen(
         topBar = {
             NavigationTopBar(
                 title = "Nachrichten",
-                onAddClick = { showNewChatDialog = true },
-                onProfileClick = { onNavigateToUserProfile(currentUser.id) }
+                onAddClick = { showNewChatDialog = true }
             )
         },
         bottomBar = {
-            NavigationBar(1, onNavigateToEvents, {}, onNavigateToTeam, onNavigateToWorkplace)
+            NavigationBar(currentTab = 1)
         },
         containerColor = Color(0xFFF5F3F7)
     ) { paddingValues ->
@@ -100,20 +90,11 @@ fun ChatsScreen(
                     }
                     if (activeChats.isEmpty()) {
                         item {
-                            Text(
-                                "Keine aktiven Chats.",
-                                color = Color.Gray,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
+                            Text("Keine aktiven Chats.", color = Color.Gray, modifier = Modifier.padding(bottom = 16.dp))
                         }
                     } else {
                         items(activeChats) { chat ->
-                            ChatListItem(
-                                chat = chat,
-                                apiClient = apiClient,
-                                onClick = { onNavigateToChatDetail(chat.id, chat.partnerName, chat.partnerId) },
-                                onProfileClick = { onNavigateToUserProfile(chat.partnerId) }
-                            )
+                            ChatListItem(chat = chat, apiClient = apiClient)
                         }
                     }
 
@@ -134,13 +115,8 @@ fun ChatsScreen(
                             ChatRequestItem(
                                 chat = request,
                                 apiClient = apiClient,
-                                onProfileClick = { onNavigateToUserProfile(request.partnerId) },
-                                onAccept = {
-                                    refreshTrigger++
-                                },
-                                onDecline = {
-                                    refreshTrigger++
-                                }
+                                onAccept = { refreshTrigger++ },
+                                onDecline = { refreshTrigger++ }
                             )
                         }
                     }
@@ -153,11 +129,9 @@ fun ChatsScreen(
 @Composable
 fun ChatListItem(
     chat: ChatDto,
-    apiClient: ApiClient,
-    onClick: () -> Unit,
-    onProfileClick: () -> Unit
+    apiClient: ApiClient
 ) {
-    val iconFont = getMaterialSymbolsFont()
+    val navController = LocalNavController.current // Universal-Access
     var partnerPicUrl by remember { mutableStateOf<String?>(null) }
     var hasStory by remember { mutableStateOf(false) }
 
@@ -172,49 +146,16 @@ fun ChatListItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .clickable { navController.navigate(ChatDetailScreenRoute(chat.id)) }
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val storyBrush = Brush.sweepGradient(
-            colors = listOf(
-                Color(0xFFfeda75),
-                Color(0xFFfa7e1e),
-                Color(0xFFd62976),
-                Color(0xFF962fbf),
-                Color(0xFF4f5bd5)
-            )
+        ProfileAvatar(
+            imageUrl = partnerPicUrl,
+            hasStory = hasStory,
+            size = 54.dp,
+            onClick = { navController.navigate(UserProfileScreenRoute(chat.partnerId)) }
         )
-
-        // HIER IST DER FIX: Harte Größe, runder Zuschnitt, DANN klickbar!
-        Box(
-            modifier = Modifier
-                .size(54.dp)
-                .clip(CircleShape)
-                .clickable { onProfileClick() }
-                .let {
-                    if (hasStory) {
-                        it.border(2.5.dp, storyBrush, CircleShape).padding(4.dp)
-                    } else it
-                }
-        ) {
-            if (partnerPicUrl != null) {
-                AsyncImage(
-                    model = partnerPicUrl,
-                    contentDescription = "Profil",
-                    contentScale = ContentScale.Crop,
-                    // fillMaxSize nimmt jetzt den perfekt berechneten Platz ein
-                    modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.LightGray)
-                )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.LightGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "person", fontFamily = iconFont, fontSize = 36.sp, color = Color.Gray)
-                }
-            }
-        }
 
         Spacer(modifier = Modifier.width(16.dp))
 
@@ -234,11 +175,11 @@ fun ChatListItem(
 fun ChatRequestItem(
     chat: ChatDto,
     apiClient: ApiClient,
-    onProfileClick: () -> Unit,
     onAccept: () -> Unit,
     onDecline: () -> Unit
 ) {
-    val iconFont = getMaterialSymbolsFont()
+    val navController = LocalNavController.current
+    val iconFont = LocalSymbolFont.current
     val scope = rememberCoroutineScope()
 
     var partnerPicUrl by remember { mutableStateOf<String?>(null) }
@@ -256,44 +197,12 @@ fun ChatRequestItem(
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val storyBrush = Brush.sweepGradient(
-            colors = listOf(
-                Color(0xFFfeda75),
-                Color(0xFFfa7e1e),
-                Color(0xFFd62976),
-                Color(0xFF962fbf),
-                Color(0xFF4f5bd5)
-            )
+        ProfileAvatar(
+            imageUrl = partnerPicUrl,
+            hasStory = hasStory,
+            size = 54.dp,
+            onClick = { navController.navigate(UserProfileScreenRoute(chat.partnerId)) }
         )
-
-        // HIER EBENFALLS DER FIX
-        Box(
-            modifier = Modifier
-                .size(54.dp)
-                .clip(CircleShape)
-                .clickable { onProfileClick() }
-                .let {
-                    if (hasStory) {
-                        it.border(2.5.dp, storyBrush, CircleShape).padding(4.dp)
-                    } else it
-                }
-        ) {
-            if (partnerPicUrl != null) {
-                AsyncImage(
-                    model = partnerPicUrl,
-                    contentDescription = "Profil",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.LightGray)
-                )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.LightGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "person", fontFamily = iconFont, fontSize = 36.sp, color = Color.Gray)
-                }
-            }
-        }
 
         Spacer(modifier = Modifier.width(16.dp))
 
@@ -318,6 +227,7 @@ fun ChatRequestItem(
     }
 }
 
+
 @Composable
 fun NewChatDialog(
     currentUserId: Int,
@@ -330,13 +240,13 @@ fun NewChatDialog(
     var users by remember { mutableStateOf<List<UserDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
+    val iconFont = LocalSymbolFont.current
 
     LaunchedEffect(Unit) {
         val res = apiClient.getUsers()
         isLoading = false
         if (res is NetworkResult.Success) users = res.data
     }
-    val iconFont = getMaterialSymbolsFont()
 
     val existingPartnerIds = existingChats.map { it.partnerId }
     val filteredUsers = users.filter {
@@ -381,6 +291,13 @@ fun NewChatDialog(
                                     .padding(vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                ProfileAvatar(
+                                    imageUrl = user.profilePictureUrl,
+                                    hasStory = user.hasActiveStory,
+                                    size = 40.dp
+                                    // onClick lassen wir hier absichtlich null, damit der Klick auf die ganze Zeile greift
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
                                 Text(user.displayName, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                             }
                         }

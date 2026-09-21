@@ -10,17 +10,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import at.yerova.socialixxx.ui.screens.NavigationBar
-import at.yerova.socialixxx.ui.screens.NavigationTopBar
+import at.yerova.socialixxx.ui.NavigationBar
+import at.yerova.socialixxx.ui.NavigationTopBar
 
 @Composable
-fun WorkplaceScreen(
-    onNavigateToEvents: () -> Unit, onNavigateToChats: () -> Unit, onNavigateToTeam: () -> Unit
-) {
+fun WorkplaceScreen() {
 
     Scaffold(
-        topBar = { NavigationTopBar("Workplace", {}, {}) },
-        bottomBar = { NavigationBar(3, onNavigateToEvents, onNavigateToChats, onNavigateToTeam, {}) },
+        topBar = { NavigationTopBar("Workplace", {}) },
+        bottomBar = { NavigationBar(3) },
         containerColor = Color(0xFFF5F3F7)
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {

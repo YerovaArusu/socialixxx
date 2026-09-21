@@ -16,23 +16,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import at.yerova.socialixxx.LocalApiClient
+import at.yerova.socialixxx.LocalSymbolFont
 import at.yerova.socialixxx.LocalUser
 import at.yerova.socialixxx.api.ApiClient
 import at.yerova.socialixxx.api.CreateEventRequest
 import at.yerova.socialixxx.api.EventDto
 import at.yerova.socialixxx.api.NetworkResult
-import at.yerova.socialixxx.ui.getMaterialSymbolsFont
-import at.yerova.socialixxx.ui.screens.NavigationBar
-import at.yerova.socialixxx.ui.screens.NavigationTopBar
+import at.yerova.socialixxx.ui.NavigationBar
+import at.yerova.socialixxx.ui.NavigationTopBar
 import kotlinx.coroutines.launch
 
 @Composable
 fun EventsScreen(
     onNavigateToEventDetail: (Int) -> Unit,
-    onNavigateToEvents: () -> Unit,
-    onNavigateToChats: () -> Unit,
-    onNavigateToTeam: () -> Unit,
-    onNavigateToWorkplace: () -> Unit
 ) {
     var events by remember { mutableStateOf<List<EventDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -72,16 +68,11 @@ fun EventsScreen(
             NavigationTopBar(
                 title = "Ereignisse",
                 onAddClick = { showCreateDialog = true },
-                onProfileClick = { println("Profil geklickt!") }
             )
         },
         bottomBar = {
             NavigationBar(
-                currentTab = 0,
-                onNavigateToEvents = onNavigateToEvents,
-                onNavigateToChats = onNavigateToChats,
-                onNavigateToTeam = onNavigateToTeam,
-                onNavigateToWorkplace = onNavigateToWorkplace
+                currentTab = 0
             )
         },
         containerColor = Color(0xFFF5F3F7)
@@ -115,7 +106,7 @@ fun EventsScreen(
 
 @Composable
 fun EventCard(event: EventDto, onClick: () -> Unit) {
-    val iconFont = getMaterialSymbolsFont()
+    val iconFont = LocalSymbolFont.current
     val timeString = event.eventTime.substringAfter("T").take(5)
 
     Card(
@@ -127,7 +118,6 @@ fun EventCard(event: EventDto, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        // ... (Dein exakter Row-Code von vorhin bleibt hier zu 100% gleich!)
         Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Column(modifier = Modifier.width(60.dp), horizontalAlignment = Alignment.Start) {
                 Text(text = "Time", fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -222,7 +212,6 @@ fun CreateEventDialog(
                     scope.launch {
                         isSubmitting = true
                         error = null
-                        // Baut den ISO-String zusammen: "2026-09-17T14:00:00"
                         val isoTime = "${date.trim()}T${time.trim()}:00"
                         val req = CreateEventRequest(title, description.takeIf { it.isNotBlank() }, isoTime, userId)
 

@@ -23,9 +23,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import at.yerova.socialixxx.LocalApiClient
+import at.yerova.socialixxx.LocalNavController
+import at.yerova.socialixxx.LocalSymbolFont
 import at.yerova.socialixxx.LocalUser
 import at.yerova.socialixxx.api.*
-import at.yerova.socialixxx.ui.getMaterialSymbolsFont
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 
@@ -34,11 +35,11 @@ fun SpaceDetailScreen(
     spaceId: Int,
     spaceName: String,
     isAssigned: Boolean,
-    onNavigateBack: () -> Unit,
     onNavigateToPostDetail: (Int) -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val iconFont = getMaterialSymbolsFont()
+    val iconFont = LocalSymbolFont.current
+    val navController = LocalNavController.current
 
     var refreshFeedTrigger by remember { mutableStateOf(0) }
     var refreshQuestionsTrigger by remember { mutableStateOf(0) }
@@ -81,7 +82,7 @@ fun SpaceDetailScreen(
                 TopAppBar(
                     title = { Text(spaceName, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
+                        IconButton(onClick = {navController.popBackStack()}) {
                             Text(text = "arrow_back", fontFamily = iconFont, fontSize = 28.sp, color = Color.Black)
                         }
                     },
@@ -92,8 +93,14 @@ fun SpaceDetailScreen(
                     containerColor = Color.White,
                     contentColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Updates", fontWeight = FontWeight.Medium) })
-                    Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Fragenkatalog", fontWeight = FontWeight.Medium) })
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = { Text("Updates", fontWeight = FontWeight.Medium) })
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = { Text("Fragenkatalog", fontWeight = FontWeight.Medium) })
                 }
             }
         },
@@ -111,7 +118,6 @@ fun SpaceDetailScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             if (selectedTab == 0) {
-                // NEU: Wir geben die Navigation an den Feed-Tab weiter
                 SpaceFeedTab(spaceId, refreshFeedTrigger, onNavigateToPostDetail)
             } else {
                 SpaceQuestionsTab(spaceId, refreshQuestionsTrigger)
@@ -138,7 +144,10 @@ fun SpaceFeedTab(spaceId: Int, refreshTrigger: Int, onNavigateToPostDetail: (Int
     if (isLoading && posts.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
     } else if (posts.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Noch keine Updates. Teile einen Tipp!", color = Color.Gray) }
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) { Text("Noch keine Updates. Teile einen Tipp!", color = Color.Gray) }
     } else {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             items(posts) { post ->
@@ -147,11 +156,11 @@ fun SpaceFeedTab(spaceId: Int, refreshTrigger: Int, onNavigateToPostDetail: (Int
         }
     }
 }
+
 @Composable
 fun SpacePostItem(post: SpacePostDto, onClick: () -> Unit) {
-    val iconFont = getMaterialSymbolsFont()
+    val iconFont = LocalSymbolFont.current
 
-    // Die gesamte Karte ist jetzt klickbar und navigiert zum neuen Screen
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -162,9 +171,20 @@ fun SpacePostItem(post: SpacePostDto, onClick: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val avatarMod = Modifier.size(40.dp).clip(CircleShape).background(Color.LightGray)
                 if (post.authorProfilePic != null) {
-                    AsyncImage(model = post.authorProfilePic, contentDescription = null, contentScale = ContentScale.Crop, modifier = avatarMod)
+                    AsyncImage(
+                        model = post.authorProfilePic,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = avatarMod
+                    )
                 } else {
-                    Box(modifier = avatarMod, contentAlignment = Alignment.Center) { Text("person", fontFamily = iconFont, color = Color.Gray) }
+                    Box(modifier = avatarMod, contentAlignment = Alignment.Center) {
+                        Text(
+                            "person",
+                            fontFamily = iconFont,
+                            color = Color.Gray
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -175,7 +195,6 @@ fun SpacePostItem(post: SpacePostDto, onClick: () -> Unit) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Text auf 4 Zeilen begrenzen (ist ja nur die Vorschau)
             Text(text = post.content, fontSize = 15.sp, lineHeight = 20.sp, maxLines = 4)
 
             if (!post.mediaUrl.isNullOrBlank()) {
@@ -184,7 +203,8 @@ fun SpacePostItem(post: SpacePostDto, onClick: () -> Unit) {
                     model = post.mediaUrl,
                     contentDescription = "Post Bild",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(8.dp)).background(Color.DarkGray)
+                    modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(8.dp))
+                        .background(Color.DarkGray)
                 )
             }
 
@@ -195,7 +215,12 @@ fun SpacePostItem(post: SpacePostDto, onClick: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "chat_bubble", fontFamily = iconFont, fontSize = 18.sp, color = Color.Gray)
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(text = "${post.commentCount} Kommentare", fontSize = 14.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+                Text(
+                    text = "${post.commentCount} Kommentare",
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }
@@ -204,6 +229,7 @@ fun SpacePostItem(post: SpacePostDto, onClick: () -> Unit) {
 @Composable
 fun SpaceQuestionsTab(spaceId: Int, refreshTrigger: Int) {
     val apiClient = LocalApiClient.current
+    val iconFont = LocalSymbolFont.current
     var questions by remember { mutableStateOf<List<QuestionDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
@@ -219,11 +245,15 @@ fun SpaceQuestionsTab(spaceId: Int, refreshTrigger: Int) {
     if (isLoading && questions.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
     } else if (questions.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Keine Fragen vorhanden.", color = Color.Gray) }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                "Keine Fragen vorhanden.",
+                color = Color.Gray
+            )
+        }
     } else {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(questions) { question ->
-                // Fragenkatalog mit Akkordeon-Aufklappfunktion (Antwort mit Anleitung)[cite: 5]
                 var expanded by remember { mutableStateOf(false) }
                 Card(
                     modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
@@ -233,10 +263,25 @@ fun SpaceQuestionsTab(spaceId: Int, refreshTrigger: Int) {
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "help", fontFamily = getMaterialSymbolsFont(), color = MaterialTheme.colorScheme.primary, fontSize = 24.sp)
+                            Text(
+                                text = "help",
+                                fontFamily = iconFont,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 24.sp
+                            )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(text = question.questionTitle, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                            Text(text = if (expanded) "expand_less" else "expand_more", fontFamily = getMaterialSymbolsFont(), fontSize = 24.sp, color = Color.Gray)
+                            Text(
+                                text = question.questionTitle,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = if (expanded) "expand_less" else "expand_more",
+                                fontFamily = iconFont,
+                                fontSize = 24.sp,
+                                color = Color.Gray
+                            )
                         }
 
                         if (expanded) {
@@ -253,8 +298,6 @@ fun SpaceQuestionsTab(spaceId: Int, refreshTrigger: Int) {
         }
     }
 }
-
-// --- DIALOGE ---
 
 @Composable
 fun CreateSpacePostDialog(
@@ -281,9 +324,9 @@ fun CreateSpacePostDialog(
                     value = content, onValueChange = { content = it },
                     label = { Text("Was gibt es Neues?") },
                     modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 5,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next), // NEU!
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) } // NEU: Tab navigiert jetzt runter!
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
                     )
                 )
                 OutlinedTextField(
@@ -301,15 +344,24 @@ fun CreateSpacePostDialog(
                     scope.launch {
                         isSubmitting = true
                         error = null
-                        val req = CreateSpacePostRequest(spaceId, userId, content.trim(), mediaUrl.trim().takeIf { it.isNotBlank() })
+                        val req = CreateSpacePostRequest(
+                            spaceId,
+                            userId,
+                            content.trim(),
+                            mediaUrl.trim().takeIf { it.isNotBlank() })
                         when (val res = apiClient.createSpacePost(spaceId, req)) {
                             is NetworkResult.Success -> onSuccess()
-                            is NetworkResult.Error -> { error = res.message; isSubmitting = false }
+                            is NetworkResult.Error -> {
+                                error = res.message; isSubmitting = false
+                            }
                         }
                     }
                 }
             ) {
-                if (isSubmitting) CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White) else Text("Posten")
+                if (isSubmitting) CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    color = Color.White
+                ) else Text("Posten")
             }
         },
         dismissButton = { TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text("Abbrechen") } }
@@ -358,12 +410,17 @@ fun CreateQuestionDialog(
                         val req = CreateQuestionRequest(spaceId, userId, title.trim(), answer.trim())
                         when (val res = apiClient.createSpaceQuestion(spaceId, req)) {
                             is NetworkResult.Success -> onSuccess()
-                            is NetworkResult.Error -> { error = res.message; isSubmitting = false }
+                            is NetworkResult.Error -> {
+                                error = res.message; isSubmitting = false
+                            }
                         }
                     }
                 }
             ) {
-                if (isSubmitting) CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White) else Text("Speichern")
+                if (isSubmitting) CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    color = Color.White
+                ) else Text("Speichern")
             }
         },
         dismissButton = { TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text("Abbrechen") } }

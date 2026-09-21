@@ -25,7 +25,6 @@ fun RegisterScreen(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    // Dropdown States
     var departments by remember { mutableStateOf<List<DepartmentBaseDto>>(emptyList()) }
     var selectedDepartment by remember { mutableStateOf<DepartmentBaseDto?>(null) }
     var expanded by remember { mutableStateOf(false) }
@@ -36,7 +35,6 @@ fun RegisterScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Lädt die verfügbaren Abteilungen beim Öffnen des Screens
     LaunchedEffect(Unit) {
         val result = apiClient.getDepartments()
         if (result is NetworkResult.Success) {
@@ -49,7 +47,11 @@ fun RegisterScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "Account erstellen", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(bottom = 32.dp))
+        Text(
+            text = "Account erstellen",
+            style = MaterialTheme.typography.headlineLarge,
+            modifier = Modifier.padding(bottom = 32.dp)
+        )
 
         OutlinedTextField(
             value = displayName, onValueChange = { displayName = it },
@@ -58,7 +60,6 @@ fun RegisterScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        // --- NEU: Das Dropdown-Menü für Abteilungen ---
         ExposedDropdownMenuBox(
             expanded = expanded,
             onExpandedChange = { expanded = !expanded },
@@ -139,7 +140,10 @@ fun RegisterScreen(
                 }
             }
         ) {
-            if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+            if (isLoading) CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = MaterialTheme.colorScheme.onPrimary
+            )
             else Text("Registrieren")
         }
 

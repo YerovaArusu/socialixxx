@@ -841,6 +841,9 @@ fun Application.configureApi() {
                 }
                 call.respond(HttpStatusCode.OK, deps)
             }
+            get("/ping") {
+                call.respond(HttpStatusCode.OK, "pong")
+            }
         }
     }
 }

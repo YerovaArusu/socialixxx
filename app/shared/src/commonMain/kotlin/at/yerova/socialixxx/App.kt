@@ -1,7 +1,11 @@
 package at.yerova.socialixxx
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -13,149 +17,134 @@ import at.yerova.socialixxx.ui.screens.chats.ChatDetailScreen
 import at.yerova.socialixxx.ui.screens.chats.ChatsScreen
 import at.yerova.socialixxx.ui.screens.events.EventDetailScreen
 import at.yerova.socialixxx.ui.screens.events.EventsScreen
-import at.yerova.socialixxx.ui.screens.generic.LoginScreen
-import at.yerova.socialixxx.ui.screens.generic.RegisterScreen
-import at.yerova.socialixxx.ui.screens.generic.UserProfileScreen
-import at.yerova.socialixxx.ui.screens.workplaces.WorkplaceScreen
+import at.yerova.socialixxx.ui.screens.generic.*
 import at.yerova.socialixxx.ui.screens.spaces.SpaceDetailScreen
 import at.yerova.socialixxx.ui.screens.spaces.SpacePostDetailScreen
 import at.yerova.socialixxx.ui.screens.spaces.SpacesScreen
+import at.yerova.socialixxx.ui.screens.workplaces.WorkplaceScreen
+import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.Font
+import socialixxx.app.shared.generated.resources.Res
+import socialixxx.app.shared.generated.resources.material_symbols_outlined
+import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun App(
     navController: NavHostController = rememberNavController()
 ) {
     MaterialTheme {
-        fun navigateBottomTab(route: Any) {
-            navController.navigate(route) {
-                popUpTo<EventsScreen> { saveState = true }
-                launchSingleTop = true
-                restoreState = true
-            }
-        }
 
         val apiClient = remember { ApiClient() }
         var currentUser by remember { mutableStateOf(SessionManager.getUser()) }
 
+        var serverState by remember { mutableStateOf(ServerState.CHECKING) }
+
+        // For init purpose. To load the font before trying to display the font
+        val symbolFont = FontFamily(Font(Res.font.material_symbols_outlined))
+
+        LaunchedEffect(Unit) {
+            while (true) {
+                val isOnline = apiClient.pingServer()
+                serverState = if (isOnline) ServerState.ONLINE else ServerState.OFFLINE
+                delay(3.seconds)
+            }
+        }
+
         CompositionLocalProvider(
-            LocalApiClient provides apiClient, LocalUser provides currentUser
+            LocalApiClient provides apiClient,
+            LocalUser provides currentUser,
+            LocalNavController provides navController,
+            LocalSymbolFont provides symbolFont
         ) {
-            NavHost(navController = navController, startDestination = LoginScreen) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                NavHost(navController = navController, startDestination = LoginScreen) {
 
-                composable<LoginScreen> {
-                    LoginScreen(
-                        onNavigateToRegister = { navController.navigate(RegisterScreen) },
-                        onLoginSuccess = { userDto ->
-                            SessionManager.saveUser(userDto)
-                            currentUser = userDto
-                            navController.navigate(EventsScreen) {
-                                popUpTo(LoginScreen) { inclusive = true }
-                            }
-                        })
+                    composable<LoginScreen> {
+                        LoginScreen(
+                            onNavigateToRegister = { navController.navigate(RegisterScreen) },
+                            onLoginSuccess = { userDto ->
+                                SessionManager.saveUser(userDto)
+                                currentUser = userDto
+                                navController.navigate(EventsScreenRoute) {
+                                    popUpTo(LoginScreen) { inclusive = true }
+                                }
+                            })
+                    }
+
+                    composable<RegisterScreen> {
+                        RegisterScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            onRegisterSuccess = { navController.popBackStack() })
+                    }
+
+                    composable<EventsScreenRoute> {
+                        EventsScreen(
+                            onNavigateToEventDetail = { eventId -> navController.navigate(EventDetailRoute(eventId)) })
+                    }
+
+                    composable<ChatsScreenRoute> {
+                        ChatsScreen()
+                    }
+
+                    composable<SpacesScreenRoute> {
+                        SpacesScreen(
+                            onNavigateToSpaceDetail = { spaceId, spaceName, isAssigned ->
+                                navController.navigate(SpaceDetailRoute(spaceId, spaceName, isAssigned))
+                            })
+                    }
+
+                    composable<SpaceDetailRoute> { backStackEntry ->
+                        val route = backStackEntry.toRoute<SpaceDetailRoute>()
+                        SpaceDetailScreen(
+                            spaceId = route.spaceId,
+                            spaceName = route.spaceName,
+                            isAssigned = route.isAssigned,
+                            onNavigateToPostDetail = { postId ->
+                                navController.navigate(SpacePostDetailRoute(route.spaceId, postId, route.isAssigned))
+                            })
+                    }
+
+                    composable<SpacePostDetailRoute> { backStackEntry ->
+                        val route = backStackEntry.toRoute<SpacePostDetailRoute>()
+                        SpacePostDetailScreen(
+                            spaceId = route.spaceId,
+                            postId = route.postId,
+                            isAssigned = route.isAssigned,
+                        )
+                    }
+
+                    composable<WorkplaceScreenRoute> {
+                        WorkplaceScreen(
+                        )
+                    }
+
+                    composable<EventDetailRoute> { backStackEntry ->
+                        val route = backStackEntry.toRoute<EventDetailRoute>()
+
+                        EventDetailScreen(
+                            eventId = route.eventId
+                        )
+                    }
+
+                    composable<ChatDetailScreenRoute> { backStackEntry ->
+                        val route = backStackEntry.toRoute<ChatDetailScreenRoute>()
+
+                        ChatDetailScreen(
+                            chatId = route.chatId,
+                        )
+                    }
+
+                    composable<UserProfileScreenRoute> { backStackEntry ->
+                        val route = backStackEntry.toRoute<UserProfileScreenRoute>()
+
+                        UserProfileScreen(
+                            targetUserId = route.targetUserId,
+                        )
+                    }
                 }
 
-                composable<RegisterScreen> {
-                    RegisterScreen(
-                        onNavigateBack = { navController.popBackStack() },
-                        onRegisterSuccess = { navController.popBackStack() })
-                }
-
-                composable<EventsScreen> {
-                    EventsScreen(
-                        onNavigateToEventDetail = { eventId -> navController.navigate(EventDetailRoute(eventId)) },
-                        onNavigateToEvents = {}, // Sind wir schon
-                        onNavigateToChats = { navigateBottomTab(ChatsScreen) },
-                        onNavigateToTeam = { navigateBottomTab(SpacesScreen) },
-                        onNavigateToWorkplace = { navigateBottomTab(WorkplaceScreen) })
-                }
-
-                composable<ChatsScreen> {
-                    ChatsScreen(
-                        onNavigateToChatDetail = { chatId, _, _ -> navController.navigate(ChatDetailScreen(chatId)) },
-                        onNavigateToUserProfile = { targetUserId ->
-                            navController.navigate(
-                                UserProfileScreen(
-                                    targetUserId
-                                )
-                            )
-                        },
-                        onNavigateToEvents = { navigateBottomTab(EventsScreen) },
-                        onNavigateToTeam = { navigateBottomTab(SpacesScreen) },
-                        onNavigateToWorkplace = { navigateBottomTab(WorkplaceScreen) })
-                }
-
-                composable<SpacesScreen> {
-                    SpacesScreen(
-                        onNavigateToSpaceDetail = { spaceId, spaceName, isAssigned ->
-                            navController.navigate(SpaceDetailRoute(spaceId, spaceName, isAssigned))
-                        },
-                        onNavigateToEvents = { navigateBottomTab(EventsScreen) },
-                        onNavigateToChats = { navigateBottomTab(ChatsScreen) },
-                        onNavigateToWorkplace = { navigateBottomTab(WorkplaceScreen) },
-                        onNavigateToUserProfile = { targetUserId ->
-                            navController.navigate(
-                                UserProfileScreen(
-                                    targetUserId
-                                )
-                            )
-                        }
-                    )
-                }
-
-                composable<SpaceDetailRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<SpaceDetailRoute>()
-                    SpaceDetailScreen(
-                        spaceId = route.spaceId,
-                        spaceName = route.spaceName,
-                        isAssigned = route.isAssigned,
-                        onNavigateBack = { navController.popBackStack() },
-                        onNavigateToPostDetail = { postId ->
-                            navController.navigate(SpacePostDetailRoute(route.spaceId, postId, route.isAssigned))
-                        }
-                    )
-                }
-
-                composable<SpacePostDetailRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<SpacePostDetailRoute>()
-                    SpacePostDetailScreen(
-                        spaceId = route.spaceId,
-                        postId = route.postId,
-                        isAssigned = route.isAssigned,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
-
-                composable<WorkplaceScreen> {
-                    WorkplaceScreen(
-                        onNavigateToEvents = { navigateBottomTab(EventsScreen) },
-                        onNavigateToChats = { navigateBottomTab(ChatsScreen) },
-                        onNavigateToTeam = { navigateBottomTab(SpacesScreen) },
-                    )
-                }
-
-                composable<EventDetailRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<EventDetailRoute>()
-
-                    EventDetailScreen(
-                        eventId = route.eventId, onNavigateBack = { navController.popBackStack() })
-                }
-
-                composable<ChatDetailScreen> { backStackEntry ->
-                    val route = backStackEntry.toRoute<ChatDetailScreen>()
-
-                    ChatDetailScreen(
-                        chatId = route.chatId,
-                        onNavigateToUserProfile = { uId -> navController.navigate(UserProfileScreen(uId)) },
-                        onNavigateBack = { navController.popBackStack() })
-                }
-
-                composable<UserProfileScreen> { backStackEntry ->
-                    val route = backStackEntry.toRoute<UserProfileScreen>()
-
-                    UserProfileScreen(
-                        targetUserId = route.targetUserId,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
+                if (serverState != ServerState.ONLINE) {
+                    ConnectingScreen(state = serverState)
                 }
             }
         }
