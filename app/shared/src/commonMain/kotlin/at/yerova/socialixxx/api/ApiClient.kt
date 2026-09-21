@@ -116,4 +116,72 @@ class ApiClient(
             setBody(request)
         }
     }
+
+    suspend fun getUserStories(userId: Int): NetworkResult<List<StoryDto>> = apiCall {
+        client.get("$baseUrl/users/$userId/stories")
+    }
+
+    suspend fun createStory(request: CreateStoryRequest): NetworkResult<StoryDto> = apiCall {
+        client.post("$baseUrl/users/${request.userId}/stories") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+    }
+
+    suspend fun getEventComments(eventId: Int): NetworkResult<List<EventCommentDto>> = apiCall {
+        client.get("$baseUrl/events/$eventId/comments")
+    }
+
+    suspend fun postEventComment(request: CreateEventCommentRequest): NetworkResult<EventCommentDto> = apiCall {
+        client.post("$baseUrl/events/${request.eventId}/comments") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+    }
+
+    suspend fun getSpaces(userId: Int): NetworkResult<List<SpaceDto>> = apiCall {
+        client.get("$baseUrl/spaces") {
+            parameter("userId", userId)
+        }
+    }
+
+    suspend fun getSpacePosts(spaceId: Int): NetworkResult<List<SpacePostDto>> = apiCall {
+        client.get("$baseUrl/spaces/$spaceId/posts")
+    }
+
+    suspend fun createSpacePost(spaceId: Int, request: CreateSpacePostRequest): NetworkResult<SpacePostDto> = apiCall {
+        client.post("$baseUrl/spaces/$spaceId/posts") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+    }
+
+    suspend fun getSpacePostComments(postId: Int): NetworkResult<List<SpacePostCommentDto>> = apiCall {
+        client.get("$baseUrl/spaces/posts/$postId/comments")
+    }
+
+    suspend fun createSpacePostComment(
+        postId: Int, request: CreateSpacePostCommentRequest
+    ): NetworkResult<SpacePostCommentDto> = apiCall {
+        client.post("$baseUrl/spaces/posts/$postId/comments") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+    }
+
+    suspend fun getSpaceQuestions(spaceId: Int): NetworkResult<List<QuestionDto>> = apiCall {
+        client.get("$baseUrl/spaces/$spaceId/questions")
+    }
+
+    suspend fun createSpaceQuestion(spaceId: Int, request: CreateQuestionRequest): NetworkResult<QuestionDto> =
+        apiCall {
+            client.post("$baseUrl/spaces/$spaceId/questions") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    suspend fun getDepartments(): NetworkResult<List<DepartmentBaseDto>> = apiCall {
+        client.get("$baseUrl/departments")
+    }
 }

@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
@@ -37,17 +38,32 @@ object ChatsScreen
 
 @Serializable
 @SerialName("chat")
-data class ChatDetailRoute(
+data class ChatDetailScreen(
     val chatId: Int
 )
 
 @Serializable
 @SerialName("user")
-data class UserProfileRoute(val targetUserId: Int)
+data class UserProfileScreen(val targetUserId: Int)
 
 @Serializable
-@SerialName("teams")
-object TeamScreen
+@SerialName("spaces")
+object SpacesScreen
+
+
+@Serializable
+@SerialName("space")
+data class SpaceDetailRoute(
+    val spaceId: Int,
+    val spaceName: String,
+    val isAssigned: Boolean
+)
+@Serializable
+data class SpacePostDetailRoute(
+    val spaceId: Int,
+    val postId: Int,
+    val isAssigned: Boolean
+)
 
 @Serializable
 @SerialName("workplace")
@@ -162,27 +178,36 @@ fun NavigationTopBar(
                 Text(text = title, fontSize = 24.sp, fontWeight = FontWeight.Normal)
             }
 
+            val storyBrush = Brush.sweepGradient(
+                colors = listOf(Color(0xFFfeda75), Color(0xFFfa7e1e), Color(0xFFd62976), Color(0xFF962fbf), Color(0xFF4f5bd5))
+            )
+
+            val avatarModifier = Modifier
+                .size(40.dp)
+                .let {
+                    if (currentUser.hasActiveStory) {
+                        it.border(2.5.dp, storyBrush, CircleShape).padding(3.dp)
+                    } else {
+                        it.border(1.dp, Color.LightGray, CircleShape)
+                    }
+                }
+                .clip(CircleShape)
+
             IconButton(
                 onClick = onProfileClick,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(44.dp)
             ) {
                 if (currentUser.profilePictureUrl != null) {
                     AsyncImage(
                         model = currentUser.profilePictureUrl,
                         contentDescription = "Profilbild",
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .border(1.dp, Color.LightGray, CircleShape)
+                        modifier = avatarModifier
                     )
                 } else {
-                    Text(
-                        text = "account_circle",
-                        fontFamily = iconFont,
-                        fontSize = 36.sp,
-                        color = Color.Black
-                    )
+                    Box(modifier = avatarModifier.background(Color.LightGray), contentAlignment = Alignment.Center) {
+                        Text(text = "person", fontFamily = iconFont, fontSize = 28.sp, color = Color.Gray)
+                    }
                 }
             }
         }

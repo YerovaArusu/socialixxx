@@ -1,6 +1,7 @@
-package at.yerova.socialixxx.ui.screens
+package at.yerova.socialixxx.ui.screens.chats
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -20,6 +22,8 @@ import at.yerova.socialixxx.LocalApiClient
 import at.yerova.socialixxx.LocalUser
 import at.yerova.socialixxx.api.*
 import at.yerova.socialixxx.ui.getMaterialSymbolsFont
+import at.yerova.socialixxx.ui.screens.NavigationBar
+import at.yerova.socialixxx.ui.screens.NavigationTopBar
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 
@@ -86,7 +90,6 @@ fun ChatsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp)
                 ) {
-                    // --- Sektion: Aktive Chats ---
                     item {
                         Text(
                             text = "Aktive Chats",
@@ -156,11 +159,13 @@ fun ChatListItem(
 ) {
     val iconFont = getMaterialSymbolsFont()
     var partnerPicUrl by remember { mutableStateOf<String?>(null) }
+    var hasStory by remember { mutableStateOf(false) }
 
     LaunchedEffect(chat.partnerId) {
         val res = apiClient.getUser(chat.partnerId)
         if (res is NetworkResult.Success) {
             partnerPicUrl = res.data.profilePictureUrl
+            hasStory = res.data.hasActiveStory
         }
     }
 
@@ -171,22 +176,48 @@ fun ChatListItem(
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.clickable { onProfileClick() }) {
+        val storyBrush = Brush.sweepGradient(
+            colors = listOf(
+                Color(0xFFfeda75),
+                Color(0xFFfa7e1e),
+                Color(0xFFd62976),
+                Color(0xFF962fbf),
+                Color(0xFF4f5bd5)
+            )
+        )
+
+        // HIER IST DER FIX: Harte Größe, runder Zuschnitt, DANN klickbar!
+        Box(
+            modifier = Modifier
+                .size(54.dp)
+                .clip(CircleShape)
+                .clickable { onProfileClick() }
+                .let {
+                    if (hasStory) {
+                        it.border(2.5.dp, storyBrush, CircleShape).padding(4.dp)
+                    } else it
+                }
+        ) {
             if (partnerPicUrl != null) {
                 AsyncImage(
                     model = partnerPicUrl,
                     contentDescription = "Profil",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(50.dp).clip(CircleShape).background(Color.LightGray)
+                    // fillMaxSize nimmt jetzt den perfekt berechneten Platz ein
+                    modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.LightGray)
                 )
             } else {
-                Text(text = "account_circle", fontFamily = iconFont, fontSize = 50.sp, color = Color.Gray)
+                Box(
+                    modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.LightGray),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "person", fontFamily = iconFont, fontSize = 36.sp, color = Color.Gray)
+                }
             }
         }
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        // Text Content
         Column(modifier = Modifier.weight(1f)) {
             Text(text = chat.partnerName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Text(
@@ -209,12 +240,15 @@ fun ChatRequestItem(
 ) {
     val iconFont = getMaterialSymbolsFont()
     val scope = rememberCoroutineScope()
+
     var partnerPicUrl by remember { mutableStateOf<String?>(null) }
+    var hasStory by remember { mutableStateOf(false) }
 
     LaunchedEffect(chat.partnerId) {
         val res = apiClient.getUser(chat.partnerId)
         if (res is NetworkResult.Success) {
             partnerPicUrl = res.data.profilePictureUrl
+            hasStory = res.data.hasActiveStory
         }
     }
 
@@ -222,23 +256,52 @@ fun ChatRequestItem(
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.clickable { onProfileClick() }) {
+        val storyBrush = Brush.sweepGradient(
+            colors = listOf(
+                Color(0xFFfeda75),
+                Color(0xFFfa7e1e),
+                Color(0xFFd62976),
+                Color(0xFF962fbf),
+                Color(0xFF4f5bd5)
+            )
+        )
+
+        // HIER EBENFALLS DER FIX
+        Box(
+            modifier = Modifier
+                .size(54.dp)
+                .clip(CircleShape)
+                .clickable { onProfileClick() }
+                .let {
+                    if (hasStory) {
+                        it.border(2.5.dp, storyBrush, CircleShape).padding(4.dp)
+                    } else it
+                }
+        ) {
             if (partnerPicUrl != null) {
                 AsyncImage(
-                    model = partnerPicUrl, contentDescription = "Profil", contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(50.dp).clip(CircleShape).background(Color.LightGray)
+                    model = partnerPicUrl,
+                    contentDescription = "Profil",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.LightGray)
                 )
             } else {
-                Text(text = "account_circle", fontFamily = iconFont, fontSize = 50.sp, color = Color.Gray)
+                Box(
+                    modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.LightGray),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "person", fontFamily = iconFont, fontSize = 36.sp, color = Color.Gray)
+                }
             }
         }
+
         Spacer(modifier = Modifier.width(16.dp))
 
         Text(text = chat.partnerName, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f))
 
         IconButton(onClick = {
             scope.launch {
-                apiClient.updateChatStatus(chat.id, UpdateChatStatusRequest(chat.partnerId, 1)) // 1 = Aktiv
+                apiClient.updateChatStatus(chat.id, UpdateChatStatusRequest(chat.partnerId, 1))
                 onAccept()
             }
         }) {
@@ -246,7 +309,7 @@ fun ChatRequestItem(
         }
         IconButton(onClick = {
             scope.launch {
-                apiClient.updateChatStatus(chat.id, UpdateChatStatusRequest(chat.partnerId, 4)) // 4 = Gelöscht
+                apiClient.updateChatStatus(chat.id, UpdateChatStatusRequest(chat.partnerId, 4))
                 onDecline()
             }
         }) {

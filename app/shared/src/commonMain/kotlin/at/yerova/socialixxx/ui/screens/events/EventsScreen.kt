@@ -1,4 +1,4 @@
-package at.yerova.socialixxx.ui.screens
+package at.yerova.socialixxx.ui.screens.events
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +22,8 @@ import at.yerova.socialixxx.api.CreateEventRequest
 import at.yerova.socialixxx.api.EventDto
 import at.yerova.socialixxx.api.NetworkResult
 import at.yerova.socialixxx.ui.getMaterialSymbolsFont
+import at.yerova.socialixxx.ui.screens.NavigationBar
+import at.yerova.socialixxx.ui.screens.NavigationTopBar
 import kotlinx.coroutines.launch
 
 @Composable
@@ -144,11 +146,17 @@ fun EventCard(event: EventDto, onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "Participants", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "Interaktionen", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "group", fontFamily = iconFont, fontSize = 16.sp)
+                        Text(text = "group", fontFamily = iconFont, fontSize = 16.sp, color = Color.DarkGray)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(text = event.participantCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Text(text = "chat_bubble", fontFamily = iconFont, fontSize = 16.sp, color = Color.DarkGray)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = event.commentCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

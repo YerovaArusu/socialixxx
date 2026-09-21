@@ -1,4 +1,4 @@
-package at.yerova.socialixxx.ui.screens
+package at.yerova.socialixxx.ui.screens.workplaces
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import at.yerova.socialixxx.ui.screens.NavigationBar
+import at.yerova.socialixxx.ui.screens.NavigationTopBar
 
 @Composable
 fun WorkplaceScreen(

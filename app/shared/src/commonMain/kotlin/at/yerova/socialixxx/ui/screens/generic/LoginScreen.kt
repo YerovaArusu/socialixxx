@@ -1,4 +1,4 @@
-package at.yerova.socialixxx.ui.screens
+package at.yerova.socialixxx.ui.screens.generic
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -10,27 +10,26 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import at.yerova.socialixxx.LocalApiClient
+import at.yerova.socialixxx.api.LoginRequest
 import at.yerova.socialixxx.api.NetworkResult
-import at.yerova.socialixxx.api.RegisterRequest
+import at.yerova.socialixxx.api.UserDto
 import kotlinx.coroutines.launch
 
+
 @Composable
-fun RegisterScreen(
-    onNavigateBack: () -> Unit,
-    onRegisterSuccess: () -> Unit
+fun LoginScreen(
+    onNavigateToRegister: () -> Unit,
+    onLoginSuccess: (UserDto) -> Unit
 ) {
-    var displayName by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var department by remember { mutableStateOf("") }
 
-    val apiClient = LocalApiClient.current
-
-    // Asynchrone States
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val coroutineScope = rememberCoroutineScope()
+
+    val apiClient = LocalApiClient.current
 
     Column(
         modifier = Modifier
@@ -40,40 +39,20 @@ fun RegisterScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Account erstellen",
+            "Socialixxx Login",
             style = MaterialTheme.typography.headlineLarge,
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
         OutlinedTextField(
-            value = displayName,
-            onValueChange = { displayName = it },
-            label = { Text("Anzeigename (z.B. Leon)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = department,
-            onValueChange = { department = it },
-            label = { Text("Abteilung (Optional)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
             value = username,
             onValueChange = { username = it },
-            label = { Text("Benutzername (für Login)") },
+            label = { Text("Benutzername") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = password,
@@ -85,36 +64,28 @@ fun RegisterScreen(
             singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         if (errorMessage != null) {
             Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
-            Spacer(modifier = Modifier.height(16.dp))
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading && displayName.isNotBlank() && username.isNotBlank() && password.isNotBlank(),
+            enabled = !isLoading && username.isNotBlank() && password.isNotBlank(),
             onClick = {
                 coroutineScope.launch {
                     isLoading = true
                     errorMessage = null
 
-                    val dep = department.trim().takeIf { it.isNotEmpty() }
+                    val result = apiClient.login(LoginRequest(username, password))
 
-                    val request = RegisterRequest(
-                        username = username.trim(),
-                        passwordHash = password, // Im PoC direktes Passwort, später Hash
-                        displayName = displayName.trim(),
-                        department = dep
-                    )
-
-                    val result = apiClient.register(request)
                     isLoading = false
-
                     when (result) {
                         is NetworkResult.Success -> {
-                            onRegisterSuccess()
+                            onLoginSuccess(result.data)
                         }
 
                         is NetworkResult.Error -> {
@@ -127,14 +98,14 @@ fun RegisterScreen(
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
             } else {
-                Text("Registrieren")
+                Text("Anmelden")
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TextButton(onClick = onNavigateBack, enabled = !isLoading) {
-            Text("Zurück zum Login")
+        TextButton(onClick = onNavigateToRegister, enabled = !isLoading) {
+            Text("Noch keinen Account? Registrieren")
         }
     }
 }

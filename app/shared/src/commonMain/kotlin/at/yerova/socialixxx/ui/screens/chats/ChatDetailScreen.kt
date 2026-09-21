@@ -1,4 +1,4 @@
-package at.yerova.socialixxx.ui.screens
+package at.yerova.socialixxx.ui.screens.chats
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -29,14 +30,16 @@ import kotlinx.coroutines.launch
 @Composable
 fun ChatDetailScreen(
     chatId: Int,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToUserProfile: (Int) -> Unit
 ) {
     var chat by remember { mutableStateOf<ChatDto?>(null) }
-
     var messages by remember { mutableStateOf<List<MessageDto>>(emptyList()) }
     var inputText by remember { mutableStateOf("") }
+
     var partnerPicUrl by remember { mutableStateOf<String?>(null) }
     var partnerName by remember { mutableStateOf<String?>(null) }
+    var hasStory by remember { mutableStateOf(false) } // NEU: Story-Flag für den Partner
 
     var isLoading by remember { mutableStateOf(true) }
     var isSending by remember { mutableStateOf(false) }
@@ -44,31 +47,22 @@ fun ChatDetailScreen(
 
     val iconFont = getMaterialSymbolsFont()
     val scope = rememberCoroutineScope()
-
     val apiClient = LocalApiClient.current
     val currentUser = LocalUser.current ?: return
 
     LaunchedEffect(chatId, currentUser) {
         val result = apiClient.getChat(chatId, currentUser.id)
         isLoading = false
-        if (result !is NetworkResult.Success) {
-            println("Error while getting chat with id $chatId")
-            return@LaunchedEffect
-        }
-        chat = result.data
-        if (chat == null) {
-            return@LaunchedEffect
-        }
+        if (result is NetworkResult.Success) {
+            chat = result.data
 
-        val userResult = apiClient.getUser(chat!!.partnerId)
-
-        if (userResult !is NetworkResult.Success) {
-            println("Error while getting user with id ${chat!!.partnerId}")
-            return@LaunchedEffect
+            val userResult = apiClient.getUser(chat!!.partnerId)
+            if (userResult is NetworkResult.Success) {
+                partnerPicUrl = userResult.data.profilePictureUrl
+                partnerName = userResult.data.displayName
+                hasStory = userResult.data.hasActiveStory // NEU: Wir lesen den Status aus!
+            }
         }
-
-        partnerPicUrl = userResult.data.profilePictureUrl
-        partnerName = userResult.data.displayName
     }
 
     val listState = rememberLazyListState()
@@ -87,7 +81,6 @@ fun ChatDetailScreen(
             listState.animateScrollToItem(messages.size - 1)
         }
     }
-
     Scaffold(
         topBar = {
             Surface(shadowElevation = 4.dp, color = Color.White) {
@@ -100,19 +93,40 @@ fun ChatDetailScreen(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
 
+                    val storyBrush = Brush.sweepGradient(
+                        colors = listOf(Color(0xFFfeda75), Color(0xFFfa7e1e), Color(0xFFd62976), Color(0xFF962fbf), Color(0xFF4f5bd5))
+                    )
+
+                    val avatarModifier = Modifier
+                        .size(44.dp) // Etwas größer für den Rahmen
+                        .let {
+                            if (hasStory) it.border(2.5.dp, storyBrush, CircleShape).padding(3.dp) else it
+                        }
+                        .clip(CircleShape)
+                        .clickable { chat?.partnerId?.let { onNavigateToUserProfile(it) } } // Klickbar!
+
                     if (partnerPicUrl != null) {
                         AsyncImage(
                             model = partnerPicUrl,
                             contentDescription = "Profil",
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.LightGray)
+                            modifier = avatarModifier.background(Color.LightGray)
                         )
                     } else {
-                        Text(text = "account_circle", fontFamily = iconFont, fontSize = 40.sp, color = Color.Gray)
+                        Box(modifier = avatarModifier.background(Color.LightGray), contentAlignment = Alignment.Center) {
+                            Text(text = "person", fontFamily = iconFont, fontSize = 32.sp, color = Color.Gray)
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
-                    partnerName?.let { Text(text = it, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+                    partnerName?.let {
+                        Text(
+                            text = it,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { chat?.partnerId?.let { id -> onNavigateToUserProfile(id) } }
+                        )
+                    }
                 }
             }
         },
@@ -191,6 +205,7 @@ fun ChatDetailScreen(
             }
         }
     }
+
 }
 
 @Composable

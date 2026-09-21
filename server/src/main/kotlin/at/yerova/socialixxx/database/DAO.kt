@@ -11,7 +11,6 @@ class User(id: EntityID<Int>) : IntEntity(id) {
     var displayName by UsersTable.displayName
     var lu by UsersTable.lu
     var zk by UsersTable.zk
-    var department by UsersTable.department
     var dw by UsersTable.dw
     var kz by UsersTable.kz
     var entryDate by UsersTable.entryDate
@@ -20,6 +19,8 @@ class User(id: EntityID<Int>) : IntEntity(id) {
     var gender by UsersTable.gender
     var pronouns by UsersTable.pronouns
     var profilePictureUrl by UsersTable.profilePictureUrl
+    var departments by Department via UserDepartmentsTable
+
     val credentials by Credential referrersOn CredentialsTable.userId
 }
 
@@ -61,6 +62,68 @@ class Event(id: EntityID<Int>) : IntEntity(id) {
     var description by EventsTable.description
     var eventTime by EventsTable.eventTime
     var creator by User referencedOn EventsTable.creatorId
-
     var participants by User via EventParticipantsTable
+}
+
+class EventComment(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<EventComment>(EventCommentsTable)
+
+    var event by Event referencedOn EventCommentsTable.eventId
+    var user by User referencedOn EventCommentsTable.userId
+    var content by EventCommentsTable.content
+    var timestamp by EventCommentsTable.timestamp
+}
+
+class Story(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<Story>(StoriesTable)
+
+    var user by User referencedOn StoriesTable.userId
+    var mediaUrl by StoriesTable.mediaUrl
+    var caption by StoriesTable.caption
+    var timestamp by StoriesTable.timestamp
+    var isActive by StoriesTable.isActive
+}
+
+class Department(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<Department>(DepartmentsTable)
+
+    var name by DepartmentsTable.name
+    var kz by DepartmentsTable.kz
+    var description by DepartmentsTable.description
+
+    var members by User via UserDepartmentsTable
+
+    val posts by SpacePost referrersOn SpacePostsTable.departmentId
+    val questions by Question referrersOn QuestionsTable.departmentId
+}
+
+class SpacePost(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<SpacePost>(SpacePostsTable)
+
+    var department by Department referencedOn SpacePostsTable.departmentId
+    var author by User referencedOn SpacePostsTable.authorId
+    var content by SpacePostsTable.content
+    var mediaUrl by SpacePostsTable.mediaUrl
+    var timestamp by SpacePostsTable.timestamp
+
+    val comments by SpacePostComment referrersOn SpacePostCommentsTable.postId
+}
+
+class SpacePostComment(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<SpacePostComment>(SpacePostCommentsTable)
+
+    var post by SpacePost referencedOn SpacePostCommentsTable.postId
+    var author by User referencedOn SpacePostCommentsTable.authorId
+    var content by SpacePostCommentsTable.content
+    var timestamp by SpacePostCommentsTable.timestamp
+}
+
+class Question(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<Question>(QuestionsTable)
+
+    var department by Department referencedOn QuestionsTable.departmentId
+    var author by User referencedOn QuestionsTable.authorId
+    var questionTitle by QuestionsTable.questionTitle
+    var answerText by QuestionsTable.answerText
+    var timestamp by QuestionsTable.timestamp
 }

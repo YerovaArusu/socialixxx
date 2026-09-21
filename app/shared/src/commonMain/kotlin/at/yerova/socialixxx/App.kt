@@ -1,22 +1,25 @@
 package at.yerova.socialixxx
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import at.yerova.socialixxx.api.ApiClient
-import at.yerova.socialixxx.ui.getMaterialSymbolsFont
 import at.yerova.socialixxx.ui.screens.*
+import at.yerova.socialixxx.ui.screens.chats.ChatDetailScreen
+import at.yerova.socialixxx.ui.screens.chats.ChatsScreen
+import at.yerova.socialixxx.ui.screens.events.EventDetailScreen
+import at.yerova.socialixxx.ui.screens.events.EventsScreen
+import at.yerova.socialixxx.ui.screens.generic.LoginScreen
+import at.yerova.socialixxx.ui.screens.generic.RegisterScreen
+import at.yerova.socialixxx.ui.screens.generic.UserProfileScreen
+import at.yerova.socialixxx.ui.screens.workplaces.WorkplaceScreen
+import at.yerova.socialixxx.ui.screens.spaces.SpaceDetailScreen
+import at.yerova.socialixxx.ui.screens.spaces.SpacePostDetailScreen
+import at.yerova.socialixxx.ui.screens.spaces.SpacesScreen
 
 @Composable
 fun App(
@@ -62,31 +65,71 @@ fun App(
                         onNavigateToEventDetail = { eventId -> navController.navigate(EventDetailRoute(eventId)) },
                         onNavigateToEvents = {}, // Sind wir schon
                         onNavigateToChats = { navigateBottomTab(ChatsScreen) },
-                        onNavigateToTeam = { navigateBottomTab(TeamScreen) },
+                        onNavigateToTeam = { navigateBottomTab(SpacesScreen) },
                         onNavigateToWorkplace = { navigateBottomTab(WorkplaceScreen) })
                 }
 
                 composable<ChatsScreen> {
                     ChatsScreen(
-                        onNavigateToChatDetail = { chatId, _, _ -> navController.navigate(ChatDetailRoute(chatId)) },
-                        onNavigateToUserProfile = { targetUserId -> navController.navigate(UserProfileRoute(targetUserId)) },
+                        onNavigateToChatDetail = { chatId, _, _ -> navController.navigate(ChatDetailScreen(chatId)) },
+                        onNavigateToUserProfile = { targetUserId ->
+                            navController.navigate(
+                                UserProfileScreen(
+                                    targetUserId
+                                )
+                            )
+                        },
                         onNavigateToEvents = { navigateBottomTab(EventsScreen) },
-                        onNavigateToTeam = { navigateBottomTab(TeamScreen) },
+                        onNavigateToTeam = { navigateBottomTab(SpacesScreen) },
                         onNavigateToWorkplace = { navigateBottomTab(WorkplaceScreen) })
                 }
 
-                composable<TeamScreen> {
-                    TeamScreen(
+                composable<SpacesScreen> {
+                    SpacesScreen(
+                        onNavigateToSpaceDetail = { spaceId, spaceName, isAssigned ->
+                            navController.navigate(SpaceDetailRoute(spaceId, spaceName, isAssigned))
+                        },
                         onNavigateToEvents = { navigateBottomTab(EventsScreen) },
                         onNavigateToChats = { navigateBottomTab(ChatsScreen) },
-                        onNavigateToWorkplace = { navigateBottomTab(WorkplaceScreen) })
+                        onNavigateToWorkplace = { navigateBottomTab(WorkplaceScreen) },
+                        onNavigateToUserProfile = { targetUserId ->
+                            navController.navigate(
+                                UserProfileScreen(
+                                    targetUserId
+                                )
+                            )
+                        }
+                    )
+                }
+
+                composable<SpaceDetailRoute> { backStackEntry ->
+                    val route = backStackEntry.toRoute<SpaceDetailRoute>()
+                    SpaceDetailScreen(
+                        spaceId = route.spaceId,
+                        spaceName = route.spaceName,
+                        isAssigned = route.isAssigned,
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToPostDetail = { postId ->
+                            navController.navigate(SpacePostDetailRoute(route.spaceId, postId, route.isAssigned))
+                        }
+                    )
+                }
+
+                composable<SpacePostDetailRoute> { backStackEntry ->
+                    val route = backStackEntry.toRoute<SpacePostDetailRoute>()
+                    SpacePostDetailScreen(
+                        spaceId = route.spaceId,
+                        postId = route.postId,
+                        isAssigned = route.isAssigned,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
                 }
 
                 composable<WorkplaceScreen> {
                     WorkplaceScreen(
                         onNavigateToEvents = { navigateBottomTab(EventsScreen) },
                         onNavigateToChats = { navigateBottomTab(ChatsScreen) },
-                        onNavigateToTeam = { navigateBottomTab(TeamScreen) },
+                        onNavigateToTeam = { navigateBottomTab(SpacesScreen) },
                     )
                 }
 
@@ -97,34 +140,22 @@ fun App(
                         eventId = route.eventId, onNavigateBack = { navController.popBackStack() })
                 }
 
-                composable<ChatDetailRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<ChatDetailRoute>()
+                composable<ChatDetailScreen> { backStackEntry ->
+                    val route = backStackEntry.toRoute<ChatDetailScreen>()
 
                     ChatDetailScreen(
-                        chatId = route.chatId, onNavigateBack = { navController.popBackStack() })
+                        chatId = route.chatId,
+                        onNavigateToUserProfile = { uId -> navController.navigate(UserProfileScreen(uId)) },
+                        onNavigateBack = { navController.popBackStack() })
                 }
 
-                composable<UserProfileRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<UserProfileRoute>()
+                composable<UserProfileScreen> { backStackEntry ->
+                    val route = backStackEntry.toRoute<UserProfileScreen>()
 
-                    Scaffold(
-                        topBar = {
-                            TopAppBar(title = { Text("Profil") }, navigationIcon = {
-                                IconButton(onClick = { navController.popBackStack() }) {
-                                    val iconFont = getMaterialSymbolsFont()
-                                    Text(
-                                        text = "arrow_back",
-                                        fontFamily = iconFont,
-                                        fontSize = 32.sp,
-                                        color = Color.Black
-                                    )
-                                }
-                            })
-                        }) { padding ->
-                        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                            Text("Infos für UserID: ${SessionManager.getUser()?.id}")
-                        }
-                    }
+                    UserProfileScreen(
+                        targetUserId = route.targetUserId,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
                 }
             }
         }

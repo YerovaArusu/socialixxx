@@ -21,7 +21,23 @@ fun Application.configureDatabase() {
             DirectChatsTable,
             MessagesTable,
             EventsTable,
-            EventParticipantsTable
+            EventParticipantsTable,
+            EventCommentsTable,
+            StoriesTable,
+            DepartmentsTable,
+            UserDepartmentsTable,
+            SpacePostsTable,
+            SpacePostCommentsTable,
+            QuestionsTable,
         )
+
+        // IDK which test departments... also... This should do for now.
+        if (Department.count() == 0L) {
+            Department.new { name = "Informationstechnologie"; kz = "IT"; description = "Softwareentwicklung & Support" }
+            Department.new { name = "Personalwesen"; kz = "HR"; description = "Recruiting & Mitarbeiterbetreuung" }
+            Department.new { name = "Logistik"; kz = "LOG"; description = "Lagerhaltung & Versand" }
+            Department.new { name = "Marketing"; kz = "MKT"; description = "Werbung & Social Media" }
+            Department.new { name = "Vertrieb"; kz = "VER"; description = "Sales & Kundenbetreuung" }
+        }
     }
 }

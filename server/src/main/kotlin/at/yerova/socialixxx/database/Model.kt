@@ -9,7 +9,6 @@ object UsersTable : IntIdTable("users") {
     val displayName = varchar("display_name", 100)
     val lu = varchar("lu", 50).nullable()
     val zk = varchar("zk", 50).nullable()
-    val department = varchar("department", 50).nullable()
     val dw = varchar("dw", 50).nullable()
     val kz = varchar("kz", 50).nullable()
     val entryDate = datetime("entry_date").default(LocalDateTime.now())
@@ -55,4 +54,56 @@ object EventParticipantsTable : Table("event_participants") {
     val eventId = reference("event_id", EventsTable)
     val userId = reference("user_id", UsersTable)
     override val primaryKey = PrimaryKey(eventId, userId)
+}
+
+object EventCommentsTable : IntIdTable("event_comments") {
+    val eventId = reference("event_id", EventsTable)
+    val userId = reference("user_id", UsersTable)
+    val content = text("content")
+    val timestamp = datetime("timestamp").default(java.time.LocalDateTime.now())
+}
+
+object StoriesTable : IntIdTable("stories") {
+    val userId = reference("user_id", UsersTable)
+    val mediaUrl = varchar("media_url", 500)
+    val caption = text("caption").nullable()
+    val timestamp = datetime("timestamp").default(LocalDateTime.now())
+    val isActive = bool("is_active").default(true)
+}
+
+object DepartmentsTable : IntIdTable("departments") {
+    val name = varchar("name", 100)
+    val kz = varchar("kz", 20) // z.B. "IT", "HR", "LOG"
+    val description = text("description").nullable()
+}
+
+object UserDepartmentsTable : Table("user_departments") {
+    val userId = reference("user_id", UsersTable)
+    val departmentId = reference("department_id", DepartmentsTable)
+    override val primaryKey = PrimaryKey(userId, departmentId)
+}
+
+object SpacePostsTable : IntIdTable("space_posts") {
+    val departmentId = reference("department_id", DepartmentsTable)
+    val authorId = reference("author_id", UsersTable)
+    val content = text("content")
+    val mediaUrl = varchar("media_url", 500).nullable() // Für Bilder/Links im Post
+    val timestamp = datetime("timestamp").default(LocalDateTime.now())
+}
+
+object SpacePostCommentsTable : IntIdTable("space_post_comments") {
+    val postId = reference("post_id", SpacePostsTable)
+    val authorId = reference("author_id", UsersTable)
+    val content = text("content")
+    val timestamp = datetime("timestamp").default(LocalDateTime.now())
+}
+
+object QuestionsTable : IntIdTable("questions") {
+    val departmentId = reference("department_id", DepartmentsTable)
+    val authorId = reference("author_id", UsersTable) // Wer hat den Eintrag erstellt?
+
+    val questionTitle = varchar("question_title", 255) // Die eigentliche Frage
+    val answerText = text("answer_text") // Die detaillierte Anleitung/Antwort
+
+    val timestamp = datetime("timestamp").default(LocalDateTime.now())
 }
