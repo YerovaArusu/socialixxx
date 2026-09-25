@@ -10,10 +10,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox // Der magische Import für das "Hochziehen"
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.modifier.modifierLocalConsumer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +41,7 @@ fun ChatDetailScreen(
     var hasStory by remember { mutableStateOf(false) }
 
     var isLoading by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
     var isSending by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
 
@@ -50,7 +53,6 @@ fun ChatDetailScreen(
 
     LaunchedEffect(chatId, currentUser) {
         val result = apiClient.getChat(chatId, currentUser.id)
-        isLoading = false
         if (result is NetworkResult.Success) {
             chat = result.data
 
@@ -68,6 +70,8 @@ fun ChatDetailScreen(
     LaunchedEffect(refreshTrigger) {
         val res = apiClient.getMessages(chatId, currentUser.id)
         isLoading = false
+        isRefreshing = false
+
         if (res is NetworkResult.Success) {
             messages = res.data
             apiClient.markMessagesAsRead(chatId, MarkReadRequest(currentUser.id))
@@ -80,15 +84,26 @@ fun ChatDetailScreen(
         }
     }
 
-    Scaffold(
+    Scaffold(modifier = Modifier.statusBarsPadding(),
         topBar = {
-            Surface(shadowElevation = 4.dp, color = Color.White) {
+            Surface(
+                shadowElevation = 4.dp,
+                color = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = {navController.popBackStack()}) {
-                        Text(text = "arrow_back", fontFamily = iconFont, fontSize = 28.sp, color = Color.Black)
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Text(
+                            text = "arrow_back",
+                            fontFamily = iconFont,
+                            fontSize = 28.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
 
@@ -105,6 +120,7 @@ fun ChatDetailScreen(
                             text = id,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.clickable { chat?.partnerId?.let { navController.navigate(UserProfileScreenRoute(it)) } }
                         )
                     }
@@ -112,18 +128,30 @@ fun ChatDetailScreen(
             }
         },
         bottomBar = {
-            Surface(shadowElevation = 16.dp, color = Color.White) {
+            Surface(
+                shadowElevation = 16.dp,
+                color = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
                         value = inputText,
                         onValueChange = { inputText = it },
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("Nachricht schreiben...") },
+                        placeholder = { Text("Nachricht schreiben...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                         shape = RoundedCornerShape(24.dp),
-                        maxLines = 4
+                        maxLines = 4,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                        )
                     )
 
                     Spacer(modifier = Modifier.width(12.dp))
@@ -150,25 +178,39 @@ fun ChatDetailScreen(
                         if (isSending) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onPrimary,
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text(text = "send", fontFamily = iconFont, fontSize = 24.sp, color = Color.White)
+                            Text(
+                                text = "send",
+                                fontFamily = iconFont,
+                                fontSize = 24.sp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
                         }
                     }
                 }
             }
         },
-        containerColor = Color(0xFFF5F3F7)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            if (isLoading) {
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                refreshTrigger++
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            if (isLoading && !isRefreshing) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (messages.isEmpty()) {
                 Text(
-                    "Noch keine Nachrichten. Schreib das erste 'Hallo'!",
-                    color = Color.Gray,
+                    text = "Noch keine Nachrichten. Schreib das erste 'Hallo'!",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else {
@@ -199,7 +241,7 @@ fun MessageBubble(message: MessageDto, isMe: Boolean) {
         Box(
             modifier = Modifier
                 .background(
-                    color = if (isMe) MaterialTheme.colorScheme.primary else Color.White,
+                    color = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                     shape = RoundedCornerShape(
                         topStart = 16.dp,
                         topEnd = 16.dp,
@@ -207,21 +249,27 @@ fun MessageBubble(message: MessageDto, isMe: Boolean) {
                         bottomEnd = if (isMe) 4.dp else 16.dp
                     )
                 )
-                .border(if (isMe) 0.dp else 1.dp, Color(0xFFE0E0E0), RoundedCornerShape(16.dp))
+                .border(
+                    width = if (isMe) 0.dp else 1.dp,
+                    color = if (isMe) Color.Transparent else MaterialTheme.colorScheme.outlineVariant,
+                    shape = RoundedCornerShape(16.dp)
+                )
                 .padding(horizontal = 16.dp, vertical = 10.dp)
                 .widthIn(max = 280.dp)
         ) {
             Column {
                 Text(
                     text = message.content,
-                    color = if (isMe) Color.White else Color.Black,
+                    color = if (isMe) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                     fontSize = 16.sp
                 )
                 Text(
                     text = time,
                     fontSize = 10.sp,
-                    color = if (isMe) Color(0xFFE0E0E0) else Color.Gray,
-                    modifier = Modifier.align(Alignment.End).padding(top = 4.dp)
+                    color = if (isMe) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 4.dp)
                 )
             }
         }

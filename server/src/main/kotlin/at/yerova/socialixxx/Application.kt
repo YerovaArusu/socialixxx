@@ -19,12 +19,16 @@ fun main() {
 fun Application.module() {
 
     install(CORS) {
-        anyHost() // Fürs lokale Testen erlauben wir Anfragen von überall
-        allowHeader(HttpHeaders.ContentType)
         allowMethod(HttpMethod.Options)
+        allowMethod(HttpMethod.Get)
+        allowMethod(HttpMethod.Post)
         allowMethod(HttpMethod.Put)
-        allowMethod(HttpMethod.Patch)
         allowMethod(HttpMethod.Delete)
+        allowMethod(HttpMethod.Patch)
+        allowHeader(HttpHeaders.Authorization)
+        allowHeader(HttpHeaders.ContentType)
+        allowHeader(HttpHeaders.AccessControlAllowOrigin)
+        anyHost()
     }
     install(ContentNegotiation) {
         json()

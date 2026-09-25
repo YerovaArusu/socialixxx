@@ -33,6 +33,7 @@ fun ProfileAvatar(
     onClick: (() -> Unit)? = null
 ) {
     val iconFont = LocalSymbolFont.current
+
     val storyBrush = Brush.sweepGradient(
         colors = listOf(
             Color(0xFFfeda75),
@@ -55,18 +56,18 @@ fun ProfileAvatar(
                 model = imageUrl,
                 contentDescription = "Profil",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.LightGray)
+                modifier = Modifier.fillMaxSize().clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
             )
         } else {
             Box(
-                modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.LightGray),
+                modifier = Modifier.fillMaxSize().clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "person",
                     fontFamily = iconFont,
                     fontSize = (size.value * 0.6).sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -87,7 +88,7 @@ fun NavigationBar(currentTab: Int) {
     }
 
     NavigationBar(
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 8.dp
     ) {
         TabItem("calendar_today", currentTab == 0, { navigateBottomTab(EventsScreenRoute) }, iconFont)
@@ -124,7 +125,7 @@ fun RowScope.TabItem(
         colors = NavigationBarItemDefaults.colors(
             indicatorColor = Color.Transparent,
             selectedIconColor = MaterialTheme.colorScheme.primary,
-            unselectedIconColor = Color.LightGray
+            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
     )
 }
@@ -139,13 +140,14 @@ fun NavigationTopBar(
     val navController = LocalNavController.current
 
     Surface(
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 8.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -153,15 +155,25 @@ fun NavigationTopBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .background(Color(0xFFF0F0F0), shape = RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(8.dp))
                         .clickable { onAddClick() }
                         .padding(8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "add", fontFamily = iconFont, fontSize = 28.sp, color = Color.Black)
+                    Text(
+                        text = "add",
+                        fontFamily = iconFont,
+                        fontSize = 28.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
-                Text(text = title, fontSize = 24.sp, fontWeight = FontWeight.Normal)
+                Text(
+                    text = title,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
 
             ProfileAvatar(

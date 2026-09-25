@@ -5,10 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,13 +22,13 @@ import at.yerova.socialixxx.ui.NavigationTopBar
 import at.yerova.socialixxx.ui.ProfileAvatar
 import at.yerova.socialixxx.ui.screens.ChatDetailScreenRoute
 import at.yerova.socialixxx.ui.screens.UserProfileScreenRoute
-import at.yerova.socialixxx.ui.screens.generic.UserProfileScreen
 import kotlinx.coroutines.launch
 
 @Composable
 fun ChatsScreen() {
     var chats by remember { mutableStateOf<List<ChatDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var showNewChatDialog by remember { mutableStateOf(false) }
 
@@ -36,9 +36,9 @@ fun ChatsScreen() {
     val currentUser = LocalUser.current ?: return
 
     LaunchedEffect(refreshTrigger) {
-        isLoading = true
         val result = apiClient.getChats(currentUser.id)
         isLoading = false
+        isRefreshing = false
         if (result is NetworkResult.Success) {
             chats = result.data
         }
@@ -70,10 +70,19 @@ fun ChatsScreen() {
         bottomBar = {
             NavigationBar(currentTab = 1)
         },
-        containerColor = Color(0xFFF5F3F7)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            if (isLoading && chats.isEmpty()) {
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                refreshTrigger++
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            if (isLoading && !isRefreshing && chats.isEmpty()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
                 LazyColumn(
@@ -85,12 +94,17 @@ fun ChatsScreen() {
                             text = "Aktive Chats",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
+                            color = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
                     }
                     if (activeChats.isEmpty()) {
                         item {
-                            Text("Keine aktiven Chats.", color = Color.Gray, modifier = Modifier.padding(bottom = 16.dp))
+                            Text(
+                                text = "Keine aktiven Chats.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
                         }
                     } else {
                         items(activeChats) { chat ->
@@ -105,11 +119,17 @@ fun ChatsScreen() {
                             text = "Chatanfragen",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
+                            color = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
                     }
                     if (chatRequests.isEmpty()) {
-                        item { Text("Keine ausstehenden Anfragen.", color = Color.Gray) }
+                        item {
+                            Text(
+                                text = "Keine ausstehenden Anfragen.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     } else {
                         items(chatRequests) { request ->
                             ChatRequestItem(
@@ -131,7 +151,7 @@ fun ChatListItem(
     chat: ChatDto,
     apiClient: ApiClient
 ) {
-    val navController = LocalNavController.current // Universal-Access
+    val navController = LocalNavController.current
     var partnerPicUrl by remember { mutableStateOf<String?>(null) }
     var hasStory by remember { mutableStateOf(false) }
 
@@ -160,11 +180,16 @@ fun ChatListItem(
         Spacer(modifier = Modifier.width(16.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = chat.partnerName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(
+                text = chat.partnerName,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Text(
                 text = chat.lastMessage ?: "Noch keine Nachrichten.",
                 fontSize = 14.sp,
-                color = Color.DarkGray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1
             )
         }
@@ -206,7 +231,13 @@ fun ChatRequestItem(
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        Text(text = chat.partnerName, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        Text(
+            text = chat.partnerName,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
 
         IconButton(onClick = {
             scope.launch {
@@ -214,7 +245,12 @@ fun ChatRequestItem(
                 onAccept()
             }
         }) {
-            Text(text = "check_circle", fontFamily = iconFont, fontSize = 28.sp, color = Color(0xFF4CAF50))
+            Text(
+                text = "check_circle",
+                fontFamily = iconFont,
+                fontSize = 28.sp,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
         IconButton(onClick = {
             scope.launch {
@@ -222,11 +258,15 @@ fun ChatRequestItem(
                 onDecline()
             }
         }) {
-            Text(text = "cancel", fontFamily = iconFont, fontSize = 28.sp, color = Color(0xFFF44336))
+            Text(
+                text = "cancel",
+                fontFamily = iconFont,
+                fontSize = 28.sp,
+                color = MaterialTheme.colorScheme.error
+            )
         }
     }
 }
-
 
 @Composable
 fun NewChatDialog(
@@ -257,25 +297,42 @@ fun NewChatDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Neuen Chat starten") },
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = { Text("Neuen Chat starten", color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(modifier = Modifier.fillMaxWidth().height(300.dp)) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Suchen...") },
+                    placeholder = { Text("Suchen...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     leadingIcon = {
-                        Text(text = "search", fontFamily = iconFont, fontSize = 50.sp, color = Color.Gray)
+                        Text(
+                            text = "search",
+                            fontFamily = iconFont,
+                            fontSize = 32.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (isLoading) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                 } else if (filteredUsers.isEmpty()) {
-                    Text("Keine neuen Personen gefunden.", color = Color.Gray)
+                    Text(
+                        text = "Keine neuen Personen gefunden.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(filteredUsers) { user ->
@@ -295,16 +352,20 @@ fun NewChatDialog(
                                     imageUrl = user.profilePictureUrl,
                                     hasStory = user.hasActiveStory,
                                     size = 40.dp
-                                    // onClick lassen wir hier absichtlich null, damit der Klick auf die ganze Zeile greift
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text(user.displayName, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                                Text(
+                                    text = user.displayName,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                             }
                         }
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Schließen") } }
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Schließen", color = MaterialTheme.colorScheme.primary) } }
     )
 }

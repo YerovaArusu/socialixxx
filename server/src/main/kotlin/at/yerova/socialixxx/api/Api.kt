@@ -63,7 +63,8 @@ fun Application.configureApi() {
 
                     val newUser = User.new {
                         this.displayName = req.displayName
-                        this.profilePictureUrl = "https://ui-avatars.com/api/?name=${req.displayName}&background=0D8ABC&color=fff&size=128"
+                        this.profilePictureUrl =
+                            "https://ui-avatars.com/api/?name=${req.displayName}&background=0D8ABC&color=fff&size=128"
                     }
                     Credential.new {
                         this.username = req.username
@@ -74,7 +75,6 @@ fun Application.configureApi() {
                     if (req.departmentId != null) {
                         val dept = Department.findById(req.departmentId!!)
                         if (dept != null) {
-                            // Die n:m Beziehung über Exposed "via" befüllen
                             newUser.departments = org.jetbrains.exposed.v1.jdbc.SizedCollection(listOf(dept))
                         }
                     }
@@ -90,7 +90,12 @@ fun Application.configureApi() {
                     val now = LocalDateTime.now()
                     val yesterday = now.minusHours(24)
 
-                    User.all().map { user ->
+                    val departmentId = call.request.queryParameters["departmentId"]?.toIntOrNull()
+
+                    val users = if (departmentId == null) User.all() else Department.findById(departmentId)?.members
+                        ?: emptyList()
+
+                    users.map { user ->
                         val monthsBetween = ChronoUnit.MONTHS.between(user.entryDate, now)
                         val calculatedLehrjahr = (monthsBetween / 12).toInt() + 1
 
@@ -568,7 +573,10 @@ fun Application.configureApi() {
 
                 // Gibt alle Abteilungen als Kacheln zurück und berechnet die individuellen Schreibrechte
                 get {
-                    val userId = call.request.queryParameters["userId"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing userId")
+                    val userId = call.request.queryParameters["userId"]?.toIntOrNull() ?: return@get call.respond(
+                        HttpStatusCode.BadRequest,
+                        "Missing userId"
+                    )
 
                     val spaces = transaction {
                         val user = User.findById(userId)
@@ -592,7 +600,9 @@ fun Application.configureApi() {
 
                     // Lädt den Feed ("Erfahrungsberichte, Tips & Tricks") einer spezifischen Abteilung
                     get {
-                        val spaceId = call.parameters["spaceId"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                        val spaceId = call.parameters["spaceId"]?.toIntOrNull() ?: return@get call.respond(
+                            HttpStatusCode.BadRequest
+                        )
 
                         val posts = transaction {
                             SpacePost.find { SpacePostsTable.departmentId eq spaceId }
@@ -616,7 +626,9 @@ fun Application.configureApi() {
 
                     // Erstellt einen neuen Post, zwingt aber eine Autorisierungsprüfung auf (RBAC)
                     post {
-                        val spaceId = call.parameters["spaceId"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                        val spaceId = call.parameters["spaceId"]?.toIntOrNull() ?: return@post call.respond(
+                            HttpStatusCode.BadRequest
+                        )
                         val req = call.receive<CreateSpacePostRequest>()
 
                         var errorStatus: HttpStatusCode? = null
@@ -670,14 +682,18 @@ fun Application.configureApi() {
                         if (responseDto != null) {
                             call.respond(HttpStatusCode.Created, responseDto!!)
                         } else {
-                            call.respond(errorStatus ?: HttpStatusCode.InternalServerError, errorMessage ?: "Fehler beim Erstellen des Posts")
+                            call.respond(
+                                errorStatus ?: HttpStatusCode.InternalServerError,
+                                errorMessage ?: "Fehler beim Erstellen des Posts"
+                            )
                         }
                     }
                 }
                 route("/posts/{postId}/comments") {
 
                     get {
-                        val postId = call.parameters["postId"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                        val postId = call.parameters["postId"]?.toIntOrNull()
+                            ?: return@get call.respond(HttpStatusCode.BadRequest)
 
                         val comments = transaction {
                             SpacePostComment.find { SpacePostCommentsTable.postId eq postId }
@@ -698,7 +714,8 @@ fun Application.configureApi() {
                     }
 
                     post {
-                        val postId = call.parameters["postId"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                        val postId = call.parameters["postId"]?.toIntOrNull()
+                            ?: return@post call.respond(HttpStatusCode.BadRequest)
                         val req = call.receive<CreateSpacePostCommentRequest>()
 
                         var errorStatus: HttpStatusCode? = null
@@ -755,10 +772,70 @@ fun Application.configureApi() {
                     }
                 }
 
+                route("/{departmentId}/ideas") {
+
+                    get {
+                        val spaceId = call.parameters["departmentId"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+
+                        val ideas = transaction {
+                            SpaceIdea.find { SpaceIdeasTable.departmentId eq spaceId }
+                                .sortedByDescending { it.timestamp }
+                                .map { idea ->
+                                    IdeaDto(
+                                        id = idea.id.value,
+                                        departmentId = idea.department.id.value,
+                                        content = idea.content,
+                                        timestamp = idea.timestamp.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                    )
+                                }
+                        }
+                        call.respond(HttpStatusCode.OK, ideas)
+                    }
+
+                    post {
+                        val departmentId = call.parameters["departmentId"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                        val req = call.receive<CreateIdeaRequest>()
+
+                        var errorStatus: HttpStatusCode? = null
+                        var errorMessage: String? = null
+                        var responseDto: IdeaDto? = null
+
+                        transaction {
+                            val departmentEntity = Department.findById(departmentId)
+                            if (departmentEntity == null) {
+                                errorStatus = HttpStatusCode.NotFound
+                                errorMessage = "Abteilung nicht gefunden"
+                                return@transaction
+                            }
+
+                            val newIdea = SpaceIdea.new {
+                                this.department = departmentEntity
+                                this.content = req.content
+                                this.timestamp = LocalDateTime.now()
+                            }
+
+                            responseDto = IdeaDto(
+                                id = newIdea.id.value,
+                                departmentId = newIdea.department.id.value,
+                                content = newIdea.content,
+                                timestamp = newIdea.timestamp.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                            )
+                        }
+
+                        if (responseDto != null) {
+                            call.respond(HttpStatusCode.Created, responseDto)
+                        } else {
+                            call.respond(errorStatus ?: HttpStatusCode.InternalServerError, errorMessage ?: "Fehler beim Einreichen der Idee")
+                        }
+                    }
+                }
+
                 route("/{spaceId}/questions") {
 
                     get {
-                        val spaceId = call.parameters["spaceId"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                        val spaceId = call.parameters["spaceId"]?.toIntOrNull() ?: return@get call.respond(
+                            HttpStatusCode.BadRequest
+                        )
 
                         val questions = transaction {
                             Question.find { QuestionsTable.departmentId eq spaceId }
@@ -779,7 +856,9 @@ fun Application.configureApi() {
                     }
 
                     post {
-                        val spaceId = call.parameters["spaceId"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                        val spaceId = call.parameters["spaceId"]?.toIntOrNull() ?: return@post call.respond(
+                            HttpStatusCode.BadRequest
+                        )
                         val req = call.receive<CreateQuestionRequest>()
 
                         var errorStatus: HttpStatusCode? = null
@@ -804,7 +883,8 @@ fun Application.configureApi() {
                             val isAssigned = authorEntity.departments.any { it.id.value == spaceId }
                             if (!isAssigned) {
                                 errorStatus = HttpStatusCode.Forbidden
-                                errorMessage = "Keine Berechtigung: Einträge in den Fragenkatalog erfordern Space-Zuweisung."
+                                errorMessage =
+                                    "Keine Berechtigung: Einträge in den Fragenkatalog erfordern Space-Zuweisung."
                                 return@transaction
                             }
 

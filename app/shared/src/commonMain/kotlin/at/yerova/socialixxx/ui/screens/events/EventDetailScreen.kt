@@ -8,10 +8,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,6 +32,7 @@ fun EventDetailScreen(
     var newCommentText by remember { mutableStateOf("") }
 
     var isLoading by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
     var isJoining by remember { mutableStateOf(false) }
     var isPostingComment by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
@@ -47,6 +48,7 @@ fun EventDetailScreen(
         val commentsResult = apiClient.getEventComments(eventId)
 
         isLoading = false
+        isRefreshing = false
         if (eventResult is NetworkResult.Success) {
             event = eventResult.data
         }
@@ -61,36 +63,76 @@ fun EventDetailScreen(
                 title = { Text("Event Details") },
                 navigationIcon = {
                     Box(modifier = Modifier.clickable { navController.popBackStack() }.padding(8.dp)) {
-                        Text(text = "arrow_back", fontFamily = iconFont, fontSize = 36.sp, color = Color.Black)
+                        Text(
+                            text = "arrow_back",
+                            fontFamily = iconFont,
+                            fontSize = 36.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         },
-        containerColor = Color(0xFFF5F3F7)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (isLoading) {
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                refreshTrigger++
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            if (isLoading && !isRefreshing && event == null) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (event == null) {
-                Text("Event nicht gefunden.", modifier = Modifier.align(Alignment.Center))
+                Text(
+                    text = "Event nicht gefunden.",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             } else {
                 val e = event!!
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp)
+                        .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.Start
                 ) {
-                    Text(e.title, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = e.title,
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Wann: ${e.eventTime.replace("T", " um ")} Uhr", color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = "Wann: ${e.eventTime.replace("T", " um ")} Uhr",
+                        color = MaterialTheme.colorScheme.primary
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(e.description ?: "Keine Beschreibung hinterlegt.", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = e.description ?: "Keine Beschreibung hinterlegt.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
 
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Button(
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         enabled = !e.isParticipating && !isJoining,
-                        colors = ButtonDefaults.buttonColors(containerColor = if (e.isParticipating) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (e.isParticipating) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                            disabledContainerColor = if (e.isParticipating) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        ),
                         onClick = {
                             scope.launch {
                                 isJoining = true
@@ -100,19 +142,29 @@ fun EventDetailScreen(
                             }
                         }
                     ) {
-                        if (isJoining) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                        else if (e.isParticipating) Text("Du nimmst teil!")
-                        else Text("Event beitreten")
+                        if (isJoining) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else if (e.isParticipating) {
+                            Text("Du nimmst teil!", color = MaterialTheme.colorScheme.onSecondary)
+                        } else {
+                            Text("Event beitreten", color = MaterialTheme.colorScheme.onPrimary)
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))
-                    Divider()
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        "Kommentare (${comments.size})",
+                        text = "Kommentare (${comments.size})",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -120,9 +172,15 @@ fun EventDetailScreen(
                         OutlinedTextField(
                             value = newCommentText,
                             onValueChange = { newCommentText = it },
-                            placeholder = { Text("Schreibe einen Kommentar...") },
+                            placeholder = { Text("Schreibe einen Kommentar...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(16.dp)
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                            )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         IconButton(
@@ -141,11 +199,19 @@ fun EventDetailScreen(
                             enabled = newCommentText.isNotBlank() && !isPostingComment,
                             modifier = Modifier.background(MaterialTheme.colorScheme.primary, CircleShape)
                         ) {
-                            if (isPostingComment) CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color.White
-                            )
-                            else Text(text = "send", fontFamily = iconFont, fontSize = 20.sp, color = Color.White)
+                            if (isPostingComment) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            } else {
+                                Text(
+                                    text = "send",
+                                    fontFamily = iconFont,
+                                    fontSize = 20.sp,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
                         }
                     }
 
@@ -153,8 +219,8 @@ fun EventDetailScreen(
 
                     if (comments.isEmpty()) {
                         Text(
-                            "Noch keine Kommentare. Sei der Erste!",
-                            color = Color.Gray,
+                            text = "Noch keine Kommentare. Sei der Erste!",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 32.dp)
                         )
                     } else {
@@ -169,22 +235,33 @@ fun EventDetailScreen(
                                 Spacer(modifier = Modifier.width(12.dp))
 
                                 Column(
-                                    modifier = Modifier.background(Color.White, RoundedCornerShape(12.dp))
-                                        .padding(12.dp).fillMaxWidth()
+                                    modifier = Modifier
+                                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                                        .padding(12.dp)
+                                        .fillMaxWidth()
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(text = comment.userName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        Text(
+                                            text = comment.userName,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
                                         Text(
                                             text = comment.timestamp.substringAfter("T").take(5),
                                             fontSize = 12.sp,
-                                            color = Color.Gray
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    Text(text = comment.content, fontSize = 14.sp)
+                                    Text(
+                                        text = comment.content,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                 }
                             }
                         }

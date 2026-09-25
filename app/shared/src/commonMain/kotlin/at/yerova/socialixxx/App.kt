@@ -22,6 +22,7 @@ import at.yerova.socialixxx.ui.screens.spaces.SpaceDetailScreen
 import at.yerova.socialixxx.ui.screens.spaces.SpacePostDetailScreen
 import at.yerova.socialixxx.ui.screens.spaces.SpacesScreen
 import at.yerova.socialixxx.ui.screens.workplaces.WorkplaceScreen
+import at.yerova.socialixxx.ui.theme.SocialixxxTheme
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.Font
 import socialixxx.app.shared.generated.resources.Res
@@ -32,7 +33,7 @@ import kotlin.time.Duration.Companion.seconds
 fun App(
     navController: NavHostController = rememberNavController()
 ) {
-    MaterialTheme {
+    SocialixxxTheme {
 
         val apiClient = remember { ApiClient() }
         var currentUser by remember { mutableStateOf(SessionManager.getUser()) }
@@ -78,8 +79,7 @@ fun App(
                     }
 
                     composable<EventsScreenRoute> {
-                        EventsScreen(
-                            onNavigateToEventDetail = { eventId -> navController.navigate(EventDetailRoute(eventId)) })
+                        EventsScreen()
                     }
 
                     composable<ChatsScreenRoute> {
@@ -87,10 +87,7 @@ fun App(
                     }
 
                     composable<SpacesScreenRoute> {
-                        SpacesScreen(
-                            onNavigateToSpaceDetail = { spaceId, spaceName, isAssigned ->
-                                navController.navigate(SpaceDetailRoute(spaceId, spaceName, isAssigned))
-                            })
+                        SpacesScreen()
                     }
 
                     composable<SpaceDetailRoute> { backStackEntry ->

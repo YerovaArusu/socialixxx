@@ -54,7 +54,7 @@ data class ChatDto(
     val partnerName: String,
     val status: Int,
     val unreadCount: Int = 0,
-    val lastMessage: String? = null // Wurde wieder hinzugefügt!
+    val lastMessage: String? = null
 )
 
 @Serializable
@@ -178,4 +178,18 @@ data class CreateQuestionRequest(
     val authorId: Int,
     val questionTitle: String,
     val answerText: String
+)
+
+@Serializable
+data class IdeaDto(
+    val id: Int,
+    val departmentId: Int,
+    val content: String,
+    val timestamp: String
+)
+
+@Serializable
+data class CreateIdeaRequest(
+    val departmentId: Int,
+    val content: String
 )

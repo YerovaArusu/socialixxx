@@ -11,7 +11,7 @@ import kotlinx.coroutines.ensureActive
 
 class ApiClient(
     private val client: HttpClient = socialixxxHttpClient,
-    val baseUrl: String = "http://10.0.0.10:8081/api" //"http://127.0.0.1:8081/api" // 10.0.2.2 ist localhost für den Android Emulator. Für Web: http://localhost:8080/api
+    val baseUrl: String = "https://yerova.net/api"
 ) {
 
     suspend fun pingServer(): Boolean {
@@ -25,6 +25,7 @@ class ApiClient(
             false
         }
     }
+
     private suspend inline fun <reified T> apiCall(
         apiCall: () -> HttpResponse
     ): NetworkResult<T> {
@@ -57,8 +58,12 @@ class ApiClient(
         }
     }
 
-    suspend fun getUsers(): NetworkResult<List<UserDto>> = apiCall {
-        client.get("$baseUrl/users")
+    suspend fun getUsers(departmentId: Int? = null): NetworkResult<List<UserDto>> = apiCall {
+        client.get("$baseUrl/users") {
+            if (departmentId != null) {
+                parameter("departmentId", departmentId)
+            }
+        }
     }
 
     suspend fun getUser(userId: Int): NetworkResult<UserDto> = apiCall {
@@ -192,12 +197,24 @@ class ApiClient(
     }
 
     suspend fun createSpaceQuestion(spaceId: Int, request: CreateQuestionRequest): NetworkResult<QuestionDto> =
+
         apiCall {
             client.post("$baseUrl/spaces/$spaceId/questions") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }
         }
+
+    suspend fun getSpaceIdeas(departmentId: Int): NetworkResult<List<IdeaDto>> = apiCall {
+        client.get("$baseUrl/spaces/$departmentId/ideas")
+    }
+
+    suspend fun createSpaceIdea(departmentId: Int, request: CreateIdeaRequest): NetworkResult<IdeaDto> = apiCall {
+        client.post("$baseUrl/spaces/$departmentId/ideas") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+    }
 
     suspend fun getDepartments(): NetworkResult<List<DepartmentBaseDto>> = apiCall {
         client.get("$baseUrl/departments")

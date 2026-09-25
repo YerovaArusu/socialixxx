@@ -107,3 +107,9 @@ object QuestionsTable : IntIdTable("questions") {
 
     val timestamp = datetime("timestamp").default(LocalDateTime.now())
 }
+
+object SpaceIdeasTable : IntIdTable("space_ideas") {
+    val departmentId = reference("department_id", DepartmentsTable)
+    val content = text("content")
+    val timestamp = datetime("timestamp")
+}

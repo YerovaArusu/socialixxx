@@ -127,3 +127,10 @@ class Question(id: EntityID<Int>) : IntEntity(id) {
     var answerText by QuestionsTable.answerText
     var timestamp by QuestionsTable.timestamp
 }
+
+class SpaceIdea(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<SpaceIdea>(SpaceIdeasTable)
+    var department by Department referencedOn SpaceIdeasTable.departmentId
+    var content by SpaceIdeasTable.content
+    var timestamp by SpaceIdeasTable.timestamp
+}

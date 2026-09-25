@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,6 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import at.yerova.socialixxx.LocalApiClient
@@ -36,17 +38,16 @@ fun UserProfileScreen(
     val iconFont = LocalSymbolFont.current
     val navController = LocalNavController.current
 
-
     var userProfile by remember { mutableStateOf<UserDto?>(null) }
     var userStories by remember { mutableStateOf<List<StoryDto>>(emptyList()) }
     var userDepartments by remember { mutableStateOf<List<String>>(emptyList()) }
 
     var isLoading by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     var showCreateStoryDialog by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
-
 
     LaunchedEffect(targetUserId, refreshTrigger) {
         isLoading = true
@@ -69,6 +70,7 @@ fun UserProfileScreen(
         }
 
         isLoading = false
+        isRefreshing = false
     }
 
     val currentUser = LocalUser.current
@@ -90,120 +92,157 @@ fun UserProfileScreen(
             TopAppBar(
                 title = { Text(userProfile?.displayName ?: "Profil") },
                 navigationIcon = {
-                    IconButton(onClick = {navController.popBackStack() }) {
-                        Text(text = "arrow_back", fontFamily = iconFont, fontSize = 28.sp, color = Color.Black)
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Text(
+                            text = "arrow_back",
+                            fontFamily = iconFont,
+                            fontSize = 28.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
                 actions = {
                     if (currentUser != null && targetUserId == currentUser.id) {
                         IconButton(onClick = { showCreateStoryDialog = true }) {
-                            Text(text = "add_box", fontFamily = iconFont, fontSize = 28.sp, color = Color.Black)
+                            Text(
+                                text = "add_box",
+                                fontFamily = iconFont,
+                                fontSize = 28.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         },
-        containerColor = Color(0xFFF5F3F7)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (errorMessage != null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
-            }
-        } else if (userProfile != null) {
-            val user = userProfile!!
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                Surface(
-                    color = Color.White,
-                    shadowElevation = 4.dp,
-                    shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
-                    modifier = Modifier.fillMaxWidth()
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                refreshTrigger++
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            if (isLoading && !isRefreshing && userProfile == null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (errorMessage != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
+                }
+            } else if (userProfile != null) {
+                val user = userProfile!!
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surface,
+                        shadowElevation = 4.dp,
+                        shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        val hasStories = userStories.isNotEmpty()
-
-                        ProfileAvatar(
-                            imageUrl = user.profilePictureUrl,
-                            hasStory = hasStories,
-                            size = 120.dp
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(text = user.displayName, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-
-                        val depText =
-                            if (userDepartments.isNotEmpty()) userDepartments.joinToString(" • ") else "Keiner Abteilung zugeordnet"
-                        Text(
-                            text = depText,
-                            fontSize = 14.sp,
-                            color = Color.Gray,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
-                            elevation = CardDefaults.cardElevation(0.dp)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            val hasStories = userStories.isNotEmpty()
+
+                            ProfileAvatar(
+                                imageUrl = user.profilePictureUrl,
+                                hasStory = hasStories,
+                                size = 120.dp
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = user.displayName,
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            val depText =
+                                if (userDepartments.isNotEmpty()) userDepartments.joinToString(" • ") else "Keiner Abteilung zugeordnet"
+                            Text(
+                                text = depText,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                ),
+                                elevation = CardDefaults.cardElevation(0.dp)
                             ) {
-                                ProfileDetailRow(icon = "badge", label = "Kurzzeichen (KZ)", value = user.kz ?: "-")
-                                ProfileDetailRow(icon = "call", label = "Durchwahl (DW)", value = user.dw ?: "-")
-                                ProfileDetailRow(
-                                    icon = "school",
-                                    label = "Lehrjahr",
-                                    value = user.lehrjahr?.toString()?.let { "$it. Lehrjahr" } ?: "-")
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    ProfileDetailRow(icon = "badge", label = "Kurzzeichen (KZ)", value = user.kz ?: "-")
+                                    ProfileDetailRow(icon = "call", label = "Durchwahl (DW)", value = user.dw ?: "-")
+                                    ProfileDetailRow(
+                                        icon = "school",
+                                        label = "Lehrjahr",
+                                        value = user.lehrjahr?.toString()?.let { "$it. Lehrjahr" } ?: "-"
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Text(
-                        text = "Aktuelle Stories",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-
-                    if (userStories.isEmpty()) {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                         Text(
-                            text = "${user.displayName} hat in den letzten 24 Stunden keine Stories gepostet.",
-                            color = Color.Gray,
-                            fontSize = 14.sp
+                            text = "Aktuelle Stories",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(bottom = 12.dp)
                         )
-                    } else {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            items(userStories) { story ->
-                                StoryThumbnail(story = story)
+
+                        if (userStories.isEmpty()) {
+                            Text(
+                                text = "${user.displayName} hat in den letzten 24 Stunden keine Stories gepostet.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp
+                            )
+                        } else {
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                items(userStories) { story ->
+                                    StoryThumbnail(story = story)
+                                }
                             }
                         }
                     }
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
-                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
@@ -213,11 +252,25 @@ fun UserProfileScreen(
 fun ProfileDetailRow(icon: String, label: String, value: String) {
     val iconFont = LocalSymbolFont.current
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Text(text = icon, fontFamily = iconFont, fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
+        Text(
+            text = icon,
+            fontFamily = iconFont,
+            fontSize = 24.sp,
+            color = MaterialTheme.colorScheme.primary
+        )
         Spacer(modifier = Modifier.width(16.dp))
         Column {
-            Text(text = label, fontSize = 12.sp, color = Color.Gray)
-            Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
@@ -228,7 +281,7 @@ fun StoryThumbnail(story: StoryDto) {
         modifier = Modifier
             .width(140.dp)
             .height(220.dp)
-            .clickable { /* Hier könnte später ein Fullscreen-Story-Viewer aufgerufen werden */ },
+            .clickable { },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
@@ -237,7 +290,9 @@ fun StoryThumbnail(story: StoryDto) {
                 model = story.mediaUrl,
                 contentDescription = "Story",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().background(Color.DarkGray)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             )
 
             Box(
@@ -274,13 +329,14 @@ fun CreateStoryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Neue Story posten") },
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = { Text("Neue Story posten", color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     text = "Teile ein besonderes Erlebnis! Füge einfach einen Link zu einem Bild ein.",
                     fontSize = 14.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 OutlinedTextField(
@@ -288,17 +344,24 @@ fun CreateStoryDialog(
                     onValueChange = { mediaUrl = it },
                     label = { Text("Bild-URL (z.B. von Imgur)") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
 
-                // Kleine visuelle Vorschau des Bildes, falls die URL gültig aussieht!
                 if (mediaUrl.isNotBlank() && mediaUrl.startsWith("http")) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(120.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.LightGray)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         AsyncImage(
                             model = mediaUrl,
@@ -314,7 +377,15 @@ fun CreateStoryDialog(
                     onValueChange = { caption = it },
                     label = { Text("Beschreibung (Optional)") },
                     maxLines = 3,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
 
                 if (error != null) {
@@ -325,6 +396,10 @@ fun CreateStoryDialog(
         confirmButton = {
             Button(
                 enabled = !isSubmitting && mediaUrl.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                ),
                 onClick = {
                     scope.launch {
                         isSubmitting = true
@@ -347,14 +422,16 @@ fun CreateStoryDialog(
                 }
             ) {
                 if (isSubmitting) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
                 } else {
-                    Text("Posten")
+                    Text("Posten", color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text("Abbrechen") }
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                Text("Abbrechen", color = MaterialTheme.colorScheme.primary)
+            }
         }
     )
 }
